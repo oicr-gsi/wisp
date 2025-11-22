@@ -28,8 +28,6 @@ workflow wisp {
     File plasma_bai
     String donor
     String genomeVersion = "38"
-    Boolean doSV = true
-    Boolean doSMALL = true
   }
 
   parameter_meta {
@@ -37,11 +35,10 @@ workflow wisp {
     tumour_bai: "Input tumor file index (bai) of primary sample"
     normal_bam: "Input normal file (bam) of primary sample"
     normal_bai: "Input normal file index (bai) of primary sample"
-    plasmabam: "Input of bam file of plasma from same donor as primary sample"
-    plasmabai: "Input of bam index file of plasma from same donor"
+    plasma_bam: "Input of bam file of plasma from same donor as primary sample"
+    plasma_bai: "Input of bam index file of plasma from same donor"
+    donor: "The donor of all the samples"
     genomeVersion: "Genome Version, only 38 supported"
-    doSV: "include somatic structural variant calls, true/false"
-    doSMALL: "include somatic small (SNV+indel) calls, true/false"
   }
 
 Map[String,GenomeResources] resources = {
@@ -220,7 +217,7 @@ Map[String,GenomeResources] resources = {
   meta {
     author: "Gavin Peng"
     email: "gpeng@oicr.on.ca"
-    description: "performs tumor fraction estimation"
+    description: "The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulating tumor DNA (ctDNA) fraction in plasma samples by leveraging somatic variants and copy number profiles derived from matched primary tumor sequencing data."
     dependencies: [
         {
             name: "PURPLE",
@@ -774,7 +771,7 @@ task purple {
       purple_purity_range: "tab seperated range of Purity estimate from PURPLE",
       purple_segments: "tab seperated segments estimated by PURPLE",
       purple_cnv: "tab seperated somatic copy number variants from PURPLE",
-      purple_cnv_gene: "tab seperated somatic gene-level copy number variants from PURPLE",
+      purple_cnv_gene: "tab seperated somatic gene-level copy number variants from PURPLE"
 		}
 	}
 }

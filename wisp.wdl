@@ -46,7 +46,7 @@ workflow wisp {
 
 Map[String,GenomeResources] resources = {
   "38": {
-    "modules": "sage, wisp, hmftools/1.1 hg38/p12 hmftools-data/53138",
+    "modules": "sage wisp hmftools/1.1 hg38/p12 hmftools-data/53138",
     "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
     "refFasta": "$HG38_ROOT/hg38_random.fa",
     "refFai": "$HG38_GRIDSS_INDEX_ROOT/hg38_random.fa.fai",
@@ -58,9 +58,9 @@ Map[String,GenomeResources] resources = {
     "known_hotspot_file": "$HMFTOOLS_DATA_ROOT/sv/known_fusions.38.bedpe",
     "repeat_mask_file": "$HMFTOOLS_DATA_ROOT/sv/repeat_mask_data.38.fa.gz",
     "knownfusion": "$HMFTOOLS_DATA_ROOT/sv/known_fusions.38.bedpe",
-    "hotspots": "$WISP_DATA_ROOT/KnownHotspots.hg38.vcf.gz",
-    "driverGenePanel": "$WISP_DATA_ROOT/DriverGenePanel.hg38.tsv",
-    "highConfBed": "$WISP_DATA_ROOT/NA12878_GIAB_highconf_IllFB-IllGATKHC-CG-Ion-Solid_ALLCHROM_v3.2.2_highconf.bed"
+    "hotspots": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/KnownHotspots.hg38.fixed.vcf.gz",
+    "driverGenePanel": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/DriverGenePanel.hg38.tsv",
+    "highConfBed": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/NA12878_GIAB_highconf_IllFB-IllGATKHC-CG-Ion-Solid_ALLCHROM_v3.2.2_highconf.bed"
   }
 }
 
@@ -120,10 +120,11 @@ Map[String,GenomeResources] resources = {
     input:
       tumour_bam = tumour_bam,
       tumour_bai = tumour_bai,
-      normal_bam = normal_bam,
-      normal_bai = normal_bai,
-      normal_name = extractNormalName.input_name,
+      reference_bam = normal_bam,
+      reference_bai = normal_bai,
+      reference_name = extractNormalName.input_name,
       tumour_name = extractTumorName.input_name,
+      append_mode = false,
       modules = resources [ genomeVersion ].modules,
       refFasta = resources [ genomeVersion ].refFasta,
       ensemblDir = resources [ genomeVersion ].ensemblDir,
@@ -132,37 +133,13 @@ Map[String,GenomeResources] resources = {
       highConfBed = resources [ genomeVersion ].highConfBed
   }
 
-  if(doSV) {
-    call filterSV {
-      input: 
-        normal_name = extractNormalName.input_name,
-        tumour_name = extractTumorName.input_name,
-        genomeVersion = genomeVersion,
-        refFasta = resources [ genomeVersion ].refFasta,
-        pon_sgl_file = resources [ genomeVersion ].pon_sgl_file,
-        pon_sv_file = resources [ genomeVersion ].pon_sv_file,
-        known_hotspot_file = resources [ genomeVersion ].known_hotspot_file,
-        repeat_mask_file = resources [ genomeVersion ].repeat_mask_file,
-        modules = resources [ genomeVersion ].modules
-    }
-  }
-
-  if(doSMALL) {
-    call filterSMALL {
-      input: 
-        normal_name = extractNormalName.input_name,
-        tumour_name = extractTumorName.input_name
-    }
-  }
-
   call purple {
     input:
       normal_name = extractNormalName.input_name,
       tumour_name = extractTumorName.input_name,
       amber_directory = amberPrimary.output_directory,
       cobalt_directory = cobaltPrimary.output_directory,
-      SV_vcf = filterSV.filtered_vcf,
-      smalls_vcf = filterSMALL.filtered_vcf,
+      somatic_vcf = sagePrimary.output_vcf,  
       genomeVersion = genomeVersion,
       modules = resources [ genomeVersion ].modules,
       gcProfile = resources [ genomeVersion ].gcProfile,
@@ -195,15 +172,27 @@ Map[String,GenomeResources] resources = {
       gcProfile = resources [ genomeVersion ].gcProfile
   }
 
+  call mergeDirs as mergeAmber {
+    input:
+      primary_zip = amberPrimary.output_directory,
+      plasma_zip = amberPlasma.output_directory,
+      output_name = "merged_amber"
+  }
+
+  call mergeDirs as mergeCobalt {
+    input:
+      primary_zip = cobaltPrimary.output_directory,
+      plasma_zip = cobaltPlasma.output_directory,
+      output_name = "merged_cobalt"
+  }
+
   call sage as sagePlasma {
     input:
-      tumour_bam = plasma_bam,
-      tumour_bai = plasma_bai,
-      normal_bam = normal_bam,
-      normal_bai = normal_bai,
-      normal_name = extractNormalName.input_name,
-      tumour_name = extractPlasmaName.input_name,
+      reference_bam = plasma_bam,
+      reference_bai = plasma_bai,
+      reference_name = extractPlasmaName.input_name,
       refFasta = resources[genomeVersion].refFasta,
+      append_mode = true,
       input_vcf = sagePrimary.output_vcf,  #  run in append mode, use VCF from primary
       modules = resources[genomeVersion].modules,
       ensemblDir = resources [ genomeVersion ].ensemblDir,
@@ -218,10 +207,10 @@ Map[String,GenomeResources] resources = {
       tumour_name = extractTumorName.input_name,
       plasma_name = extractPlasmaName.input_name,
       purple_dir = purple.purple_directory,
-      amber_dir = amberPlasma.output_directory,
-      cobalt_dir = cobaltPlasma.output_directory,
-      somatic_vcf = purple.purple_SMALL,
-      somatic_vcf_index = purple.purple_SMALL_index,
+      amber_dir = mergeAmber.output_zip,
+      cobalt_dir = mergeCobalt.output_zip,
+      somatic_vcf = sagePlasma.output_vcf,
+      somatic_vcf_index = sagePlasma.output_vcf_index,
       bqr_dir = sagePlasma.output_bqr_directory,
       refFasta = resources[genomeVersion].refFasta,
       genomeVersion = genomeVersion,
@@ -461,19 +450,40 @@ task cobalt {
 	}
 }
 
+task mergeDirs {
+  input {
+    File primary_zip
+    File plasma_zip
+    String output_name
+  }
+  command <<<
+    mkdir -p ~{output_name}
+    unzip -o ~{primary_zip} -d ~{output_name}/
+    unzip -o ~{plasma_zip} -d ~{output_name}/
+    # Flatten if nested
+    find ~{output_name} -mindepth 2 -type f -exec mv {} ~{output_name}/ \;
+    find ~{output_name} -mindepth 1 -type d -empty -delete
+    zip -r ~{output_name}.zip ~{output_name}/
+  >>>
+  output {
+    File output_zip = "~{output_name}.zip"
+  }
+}
+
 task sage {
   input {
-    String tumour_name
-    File tumour_bam
-    File tumour_bai
-    String normal_name
-    File normal_bam
-    File normal_bai
+    String? tumour_name
+    File? tumour_bam
+    File? tumour_bai
+    String reference_name
+    File reference_bam
+    File reference_bai
     String refFasta
     String ensemblDir
     String hotspots
     String driverGenePanel
     String highConfBed
+    Boolean append_mode = false
     File? input_vcf  # For append mode
     Int min_map_quality = 10 
     Int hard_min_tumor_qual = 50
@@ -489,14 +499,15 @@ task sage {
     tumour_name: "Name for Tumour sample"
     tumour_bam: "Tumour bam"
     tumour_bai: "Matching bai for Tumour bam"
-    normal_name: "Name for Normal sample"
-    normal_bam: "Normal bam"
-    normal_bai: "Matching bai for Normal bam"
+    reference_name: "Name for reference sample, in append mode this is cfDNA sample"
+    reference_bam: "reference bam"
+    reference_bai: "Matching bai for reference bam"
     refFasta: "Reference genome fasta"
     ensemblDir: "Ensembl data directory"
     hotspots: "Known hotspots VCF"
     driverGenePanel: "Driver gene panel TSV"
     highConfBed: "High confidence regions BED"
+    append_mode: "whether run sage in append mode"
     input_vcf: "Input VCF for append mode (optional)"
     min_map_quality: "Minimum mapping quality"
     hard_min_tumor_qual: "Hard minimum tumor quality"
@@ -507,24 +518,31 @@ task sage {
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
   }
+  
 
   command <<<
     set -euo pipefail
-
     mkdir -p ~{tumour_name}.sage.bqr 
 
-    java -Xmx32G -jar ./sage_v3.4.4.jar \
-      -tumor ~{tumour_name} \
-      -tumor_bam ~{tumour_bam} \
-      -reference ~{normal_name} \
-      -reference_bam ~{normal_bam} \
+    if ~{append_mode}; then
+        sageClass="com.hartwig.hmftools.sage.append.SageAppendApplication"
+    else
+        sageClass="com.hartwig.hmftools.sage.SageApplication"
+    fi
+    sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
+    
+  
+    java -Xmx32G -cp ${sage_jar} ${sageClass}   \
+      ~{if append_mode then "" else "-tumor " + tumour_name} \
+      ~{if append_mode then "" else "-tumor_bam " + tumour_bam} \
+      -reference ~{reference_name} \
+      -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
       -ref_genome ~{refFasta} \
       ~{"-input_vcf " + input_vcf} \
       ~{if !defined(input_vcf) then "-ensembl_data_dir " + ensemblDir else ""} \
-      ~{if !defined(input_vcf) then "-hotspots " + hotspots else ""} \
-      ~{if !defined(input_vcf) then "-driver_gene_panel " + driverGenePanel else ""} \
       ~{if !defined(input_vcf) then "-high_confidence_bed " + highConfBed else ""} \
+      ~{if !defined(input_vcf) then "-hotspots " + hotspots else ""} \
       -output_vcf ~{tumour_name}.sage.vcf.gz \
       -threads ~{threads} \
       -min_map_quality ~{min_map_quality} \
@@ -614,12 +632,11 @@ task runWisp {
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
       -purple_dir ~{tumour_name}.solPrimary.purple/ \
-      -amber_dir ~{plasma_name}.amber/ \
-      -cobalt_dir ~{plasma_name}.cobalt/ \
+      -amber_dir "merged_amber"/ \
+      -cobalt_dir "merged_cobalt"/ \
       -somatic_vcf ~{somatic_vcf} \
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
-      -ref_genome_version ~{genomeVersion} \
       -output_dir ~{plasma_name}.wisp/ \
       -threads ~{threads}
 
@@ -650,152 +667,6 @@ task runWisp {
   }
 }
 
-task filterSV {
-  
-  input {
-    String normal_name
-    String tumour_name
-    File? vcf
-    String gripssScript = "java -Xmx80G -jar $HMFTOOLS_ROOT/gripss.jar"
-    String refFasta
-    String genomeVersion
-    String pon_sgl_file
-    String pon_sv_file
-    String known_hotspot_file
-    String repeat_mask_file
-    Int hard_min_tumor_qual = 500
-    String filter_sgls = "-filter_sgls"
-    String modules
-    Int memory = 80
-    Int threads = 1
-    Int timeout = 100
-  }
-
-  parameter_meta {
-    normal_name:  "Name for normal sample"
-    tumour_name: "Name for Tumour sample"
-    vcf: "VCF file for filtering"
-    gripssScript: "location and java call for gripss jar"
-    refFasta: "reference fasta"
-    genomeVersion: "version of the genome"
-    pon_sgl_file: "panel of normals, single breakends"
-    pon_sv_file: "panel of normals, germline structural variants"
-    known_hotspot_file: "known/common hotspots for structural variants"
-    repeat_mask_file: "repeating masking information"
-    hard_min_tumor_qual: "Any variant with QUAL less than x is filtered "
-    filter_sgls: "include filtering of single breakends"
-		modules: "Required environment modules"
-		memory: "Memory allocated for this job (GB)"
-		threads: "Requested CPU threads"
-		timeout: "Hours before task timeout"
-	}
-  
-  command <<<
-    set -euo pipefail
-
-    mkdir gripss
-
-    ~{gripssScript} \
-        -vcf ~{vcf}  \
-        -sample ~{tumour_name} -reference ~{normal_name} \
-        -ref_genome_version ~{genomeVersion} \
-        -ref_genome ~{refFasta} \
-        -pon_sgl_file ~{pon_sgl_file} \
-        -pon_sv_file ~{pon_sv_file} \
-        -known_hotspot_file ~{known_hotspot_file} \
-        -repeat_mask_file ~{repeat_mask_file} \
-        -output_dir gripss/ \
-        -hard_min_tumor_qual ~{hard_min_tumor_qual} \
-        ~{filter_sgls}
-
-  >>>
-
-  runtime {
-    cpu: "~{threads}"
-    memory:  "~{memory} GB"
-    modules: "~{modules}"
-    timeout: "~{timeout}"
-  }
-
-  output {
-    File soft_filtered_vcf = "gripss/~{tumour_name}.gripss.vcf.gz"
-    File filtered_vcf = "gripss/~{tumour_name}.gripss.filtered.vcf.gz"
-  }
-
-  meta {
-		output_meta: {
-			filtered_vcf: "high confidence structural variant VCF",
-      soft_filtered_vcf: "structural variant VCF after first filtering"
-		}
-	}
-
-}
-
-task filterSMALL {
-  
-  input {
-    String tumour_name
-    String normal_name
-    File? vcf
-    File? vcf_index
-    String bcftoolsScript = "$BCFTOOLS_ROOT/bin/bcftools"
-    String genome = "$HG38_ROOT/hg38_random.fa"
-    String regions = "chr1,chr10,chr11,chr12,chr13,chr14,chr15,chr16,chr17,chr18,chr19,chr2,chr20,chr21,chr22,chr3,chr4,chr5,chr6,chr7,chr8,chr9,chrX"
-    String difficultRegions = "--targets-file $HG38_DAC_EXCLUSION_ROOT/hg38-dac-exclusion.v2.bed"
-    String tumorVAF = "0.01"
-    String modules = "bcftools/1.9 hg38/p12 hg38-dac-exclusion/1.0"
-    Int threads = 8
-    Int memory = 32
-    Int timeout = 100
-  }
-
-  parameter_meta {
-    normal_name:  "Name for normal sample"
-    tumour_name: "Name for Tumour sample"
-    vcf: "VCF file for filtering"
-    vcf_index: "index of VCF file for filtering"
-    bcftoolsScript: "location for bcftools"
-    genome: "reference fasta"
-    regions: "regions/chromosomes to include"
-    difficultRegions: "regions to exclude because they are difficult"
-    tumorVAF: "minimum variant allele frequency for tumour calls to pass filter"
-    modules: "Required environment modules"
-    memory: "Memory allocated for this job (GB)"
-    threads: "Requested CPU threads"
-    timeout: "Hours before task timeout"
-  }
-
-  command <<<
-    set -euo pipefail
-
-    echo ~{normal_name} >samples.txt
-    echo ~{tumour_name} >>samples.txt
-
-     ~{bcftoolsScript} view -f "PASS" -S samples.txt -r ~{regions} ~{difficultRegions} ~{vcf} |\
-     ~{bcftoolsScript} norm --multiallelics - --fasta-ref ~{genome} |\
-     ~{bcftoolsScript} filter -i "(FORMAT/AD[0:1])/(FORMAT/AD[0:0]+FORMAT/AD[0:1]) >= ~{tumorVAF}"  > ~{tumour_name}.PASS.vcf
-
-  >>>
-
-  runtime {
-    cpu: "~{threads}"
-    memory:  "~{memory} GB"
-    modules: "~{modules}"
-    timeout: "~{timeout}"
-  }
-
-  output {
-    File filtered_vcf = "~{tumour_name}.PASS.vcf"
-  }
-
-  meta {
-    output_meta: {
-      filtered_vcf: "Filtered SNV+in/del VCF"
-    }
-  }
-
-}
-
 task purple {
   input {
     String normal_name
@@ -804,8 +675,7 @@ task purple {
     String outfilePrefix = tumour_name + ".sol" + solution_name
     File amber_directory
     File cobalt_directory
-    File? SV_vcf
-    File? smalls_vcf
+    File somatic_vcf
     String ensemblDir
     String refFasta
     String genomeVersion
@@ -831,8 +701,7 @@ task purple {
     outfilePrefix: "Prefix of output file"
     amber_directory: "zipped output from AMBER"
     cobalt_directory: "zipped output from COBALT"
-    SV_vcf: "filtered structural variant (SV) vcf"
-    smalls_vcf: "filtered SNV and indel (smalls) vcf"
+    somatic_vcf: "somatic variants vcf"
     ensemblDir: "Directory of Ensembl data for PURPLE"
     refFasta: "fasta of reference genome"
     gcProfile: "GC profile, generated for COBALT"
@@ -867,8 +736,7 @@ task purple {
       -amber ~{tumour_name}.amber -cobalt ~{tumour_name}.cobalt \
       ~{"-ploidy_penalty_factor" + ploidy_penalty_factor} \
       ~{"-ploidy_penalty_standard_deviation" + ploidy_penalty_standard_deviation} \
-      ~{"-somatic_sv_vcf " + SV_vcf} \
-      ~{"-somatic_vcf " + smalls_vcf} \
+      ~{"-somatic_vcf " + somatic_vcf} \
       ~{"-min_ploidy " + min_ploidy} \
       ~{"-max_ploidy " + max_ploidy} \
       ~{"-min_purity " + min_purity} \
@@ -896,10 +764,6 @@ task purple {
     File purple_segments = "~{outfilePrefix}.purple/~{tumour_name}.purple.segment.tsv"
     File purple_cnv = "~{outfilePrefix}.purple/~{tumour_name}.purple.cnv.somatic.tsv"
     File purple_cnv_gene = "~{outfilePrefix}.purple/~{tumour_name}.purple.cnv.gene.tsv"
-    File? purple_SV_index = "~{outfilePrefix}.purple/~{tumour_name}.purple.sv.vcf.gz.tbi"
-    File? purple_SV = "~{outfilePrefix}.purple/~{tumour_name}.purple.sv.vcf.gz"
-    File? purple_SMALL_index = "~{outfilePrefix}.purple/~{tumour_name}.purple.somatic.vcf.gz.tbi"
-    File? purple_SMALL = "~{outfilePrefix}.purple/~{tumour_name}.purple.somatic.vcf.gz"
   }
 
   meta {
@@ -911,10 +775,6 @@ task purple {
       purple_segments: "tab seperated segments estimated by PURPLE",
       purple_cnv: "tab seperated somatic copy number variants from PURPLE",
       purple_cnv_gene: "tab seperated somatic gene-level copy number variants from PURPLE",
-      purple_SV_index: "Structural Variant .vcf index edited by PURPLE",
-      purple_SV: "Structural Variant .vcf edited by PURPLE",
-      purple_SMALL_index: "SNV+IN/DEL .vcf index edited by PURPLE",
-      purple_SMALL: "SNV+IN/DEL .vcf edited by PURPLE"
 		}
 	}
 }

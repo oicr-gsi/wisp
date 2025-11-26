@@ -148,7 +148,7 @@
             "wisp.sage.timeout": null, 
             "wisp.tumour_bai": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam.bai",
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_tumor_test.bam.bai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -160,7 +160,7 @@
             },
             "wisp.tumour_bam": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam",
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_tumor_test.bam",
                             "externalIds": [
                                 {
                                     "id": "TEST",

@@ -1,0 +1,201 @@
+[
+    {
+        "arguments": {
+            "wisp.amberPlasma.amberScript": null,			
+            "wisp.amberPlasma.memory": null,			
+            "wisp.amberPlasma.min_base_quality": null,			
+            "wisp.amberPlasma.min_mapping_quality": null,			
+            "wisp.amberPlasma.threads": null,			
+            "wisp.amberPlasma.timeout": null,			
+            "wisp.amberPrimary.amberScript": null,			
+            "wisp.amberPrimary.memory": null,			
+            "wisp.amberPrimary.min_base_quality": null, 			
+            "wisp.amberPrimary.min_mapping_quality": null,			
+            "wisp.amberPrimary.threads": null,			
+            "wisp.amberPrimary.timeout": null,			
+            "wisp.chromosomes": null,
+            "wisp.cobaltPlasma.colbaltScript": null,			
+            "wisp.cobaltPlasma.gamma": null,			
+            "wisp.cobaltPlasma.memory": null,			
+            "wisp.cobaltPlasma.min_mapping_quality": null,			
+            "wisp.cobaltPlasma.threads": null, 
+            "wisp.cobaltPlasma.timeout": null,		
+            "wisp.cobaltPrimary.colbaltScript": null,			
+            "wisp.cobaltPrimary.gamma": null,
+            "wisp.cobaltPrimary.memory": null,			
+            "wisp.cobaltPrimary.min_mapping_quality": null,
+            "wisp.cobaltPrimary.threads": null,
+            "wisp.cobaltPrimary.timeout": null,
+            "wisp.donor": "GSICAPBENCH_test",			
+            "wisp.extractNormalName.memory": null, 
+            "wisp.extractNormalName.timeout": null, 
+            "wisp.extractPlasmaName.memory": null, 
+            "wisp.extractPlasmaName.timeout": null, 
+            "wisp.extractTumorName.memory": null, 
+            "wisp.extractTumorName.timeout": null, 
+            "wisp.genomeVersion": null,
+            "wisp.mergePlasmaBqr.memory": null, 
+            "wisp.mergePlasmaBqr.timeout": null, 
+            "wisp.mergePlasmaVcfs.memory": null, 
+            "wisp.mergePlasmaVcfs.timeout": null, 
+            "wisp.normal_bai": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },			
+            "wisp.normal_bam": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },			
+            "wisp.plasma_bai": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_plasma_test.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },			
+            "wisp.plasma_bam": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_plasma_test.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },			
+            "wisp.purple.max_ploidy": null,
+            "wisp.purple.max_purity": null,
+            "wisp.purple.memory": null,			
+            "wisp.purple.min_diploid_tumor_ratio_count": null,
+            "wisp.purple.min_ploidy": null,
+            "wisp.purple.min_purity": null,
+            "wisp.purple.outfilePrefix": null,
+            "wisp.purple.ploidy_penalty_factor": null,
+            "wisp.purple.ploidy_penalty_standard_deviation": null,			
+            "wisp.purple.purpleScript": null,
+            "wisp.purple.threads": null,
+            "wisp.purple.timeout": null, 
+            "wisp.runWisp.memory": null,
+            "wisp.runWisp.threads": null,
+            "wisp.runWisp.timeout": null,
+            "wisp.sage_primary_vcf_index": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GSICAPBENCH_011303_Ct_T_Novaseq_X_validation_v1_2.sage.vcf.gz.tbi",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },
+            "wisp.sage_primary_vcf": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GSICAPBENCH_011303_Ct_T_Novaseq_X_validation_v1_2.sage.vcf.gz",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },
+            "wisp.sage.hard_min_tumor_qual": null,
+            "wisp.sage.hard_min_tumor_raw_alt_support": null, 		
+            "wisp.sage.hard_min_tumor_vaf": null,
+            "wisp.sage.memory": null, 
+            "wisp.sage.min_map_quality": null, 
+            "wisp.sage.threads": null,
+            "wisp.sage.timeout": null, 
+            "wisp.tumour_bai": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            },
+            "wisp.tumour_bam": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/inputs/GSICAPBENCH_011303_normal_test.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+            }
+        },
+        "description": "wisp workflow test 01",
+        "engineArguments": {
+           "write_to_cache": false,
+           "read_from_cache": false
+        },
+        "id": "wisp_test_01",
+        "metadata": {
+            "wisp.wisp_directory": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_snv_results": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            }
+        },
+        "validators": [
+            {
+                "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
+                "metrics_compare": "@CHECKOUT@/tests/compare.sh",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_01.metrics",
+                "type": "script"
+            }
+        ]
+    }
+]

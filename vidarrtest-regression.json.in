@@ -101,6 +101,9 @@
             "wisp.runWisp.memory": null,
             "wisp.runWisp.threads": null,
             "wisp.runWisp.timeout": null,
+            "wisp.runWisp.purple_dir": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/out_wg/GSICAPBENCH_011303_Nk_P_Novaseq_X_Validation_v1-2.solPrimary.purple.zip",
+            "wisp.runWisp.amber_dir": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/out_wg/merged_amber.zip",
+            "wisp.runWisp.cobalt_dir": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/out_wg/merged_cobalt.zip",
             "wisp.purple.solution_name": null,
             "wisp.sagePlasma.tumour_name": null,
             "wisp.sagePlasma.tumour_bam": null,
@@ -114,7 +117,7 @@
             "wisp.sagePlasma.timeout": null,
             "wisp.sage_primary_vcf_index": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GSICAPBENCH_011303_Ct_T_Novaseq_X_validation_v1_2.sage.vcf.gz.tbi",
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/sage/test/out/GSICAPBENCH_011303_Nk_P_Novaseq_X_Validation_v1-2.sage.vcf.gz.tbi",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -126,7 +129,7 @@
             },
             "wisp.sage_primary_vcf": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GSICAPBENCH_011303_Ct_T_Novaseq_X_validation_v1_2.sage.vcf.gz",
+                            "configuration": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/sage/test/out/GSICAPBENCH_011303_Nk_P_Novaseq_X_Validation_v1-2.sage.vcf.gz",
                             "externalIds": [
                                 {
                                     "id": "TEST",

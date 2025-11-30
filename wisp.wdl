@@ -31,7 +31,7 @@ workflow wisp {
     File sage_primary_vcf
     File sage_primary_vcf_index
     
-    Array[String] chromosomes = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX", "chrY"]
+    Array[String] chromosomes = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22,chrX,chrY"]
   }
 
   parameter_meta {
@@ -49,11 +49,11 @@ workflow wisp {
 
   Map[String,GenomeResources] resources = {
     "38": {
-      "modules": "wisp/v1.2-beta.3 hmftools/1.1 hg38/p12 hmftools-data/53138",
+      "modules": "wisp/v1.2-beta.3 hmftools/1.1 hg38/p12 hmftools-data/53138 bcftools/1.9",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
       "refFasta": "$HG38_ROOT/hg38_random.fa",
       "refFai": "$HG38_GRIDSS_INDEX_ROOT/hg38_random.fa.fai",
-      "PON" : "$HMFTOOLS_DATA_ROOT/copy_number/GermlineHetPon.38.vcf.gz",
+      "PON" : "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GermlineHetPon.38.vcf.gz",
       "ensemblDir": "$HMFTOOLS_DATA_ROOT/ensembl_data",
       "gcProfile": "$HMFTOOLS_DATA_ROOT/copy_number/GC_profile.1000bp.38.cnp",
       "pon_sgl_file": "$HMFTOOLS_DATA_ROOT/sv/sgl_pon.38.bed.gz",
@@ -94,17 +94,41 @@ workflow wisp {
       inputBai = plasma_bai
   }
 
-  call amber as amberPrimary {
+  scatter (chr in chromosomes) {
+    call splitPonByChromosome {
+      input:
+        PON = resources[genomeVersion].PON,
+        chromosome = chr,
+        modules = resources[genomeVersion].modules
+    }
+  }
+
+  
+  scatter (idx in range(length(chromosomes))) {
+    String chr_label = sub(chromosomes[idx], ",", "_")
+    call amber as amberPrimaryChr {
+      input:
+        tumour_bam = tumour_bam,
+        tumour_bai = tumour_bai,
+        normal_bam = normal_bam,
+        normal_bai = normal_bai,
+        normal_name = extractNormalName.input_name,
+        tumour_name = extractTumorName.input_name,  
+        output_prefix = extractTumorName.input_name + "." + chr_label,  
+        PON = splitPonByChromosome.chr_pon[idx],
+        genomeVersion = genomeVersion,
+        modules = resources[genomeVersion].modules,
+        threads = 2,
+        memory = 8,
+        timeout = 30
+    }
+}
+
+  call mergeAmberChromosomes as amberPrimary {
     input:
-      tumour_bam = tumour_bam,
-      tumour_bai = tumour_bai,
-      normal_bam = normal_bam,
-      normal_bai = normal_bai,
-      normal_name = extractNormalName.input_name,
+      chr_zips = amberPrimaryChr.output_directory,
       tumour_name = extractTumorName.input_name,
-      genomeVersion = genomeVersion,
-      modules = resources[genomeVersion].modules,
-      PON = resources[genomeVersion].PON
+      modules = resources[genomeVersion].modules
   }
 
   call cobalt as cobaltPrimary {
@@ -133,17 +157,31 @@ workflow wisp {
       refFasta = resources[genomeVersion].refFasta
   }
 
-  call amber as amberPlasma {
+  scatter (idx in range(length(chromosomes))) {
+    String chr_label_plasma = sub(chromosomes[idx], ",", "_")
+    call amber as amberPlasmaChr {
+      input:
+        tumour_bam = plasma_bam,
+        tumour_bai = plasma_bai,
+        normal_bam = normal_bam,
+        normal_bai = normal_bai,
+        normal_name = extractNormalName.input_name,
+        tumour_name = extractTumorName.input_name,
+        output_prefix = extractTumorName.input_name + "." + chr_label_plasma,
+        PON = splitPonByChromosome.chr_pon[idx],
+        genomeVersion = genomeVersion,
+        modules = resources[genomeVersion].modules,
+        threads = 2,  # Reduced since single chr
+        memory = 8,   # Reduced memory
+        timeout = 30  # Much shorter
+    }
+  }
+
+  call mergeAmberChromosomes as amberPlasma {
     input:
-      tumour_bam = plasma_bam,
-      tumour_bai = plasma_bai,
-      normal_bam = normal_bam,
-      normal_bai = normal_bai,
-      normal_name = extractNormalName.input_name,
-      tumour_name = extractPlasmaName.input_name,
-      genomeVersion = genomeVersion,
-      modules = resources[genomeVersion].modules,
-      PON = resources[genomeVersion].PON
+      chr_zips = amberPlasmaChr.output_directory,  
+      tumour_name = extractPlasmaName.input_name,  
+      modules = resources[genomeVersion].modules
   }
 
   call cobalt as cobaltPlasma {
@@ -258,7 +296,7 @@ workflow wisp {
   output {
     File wisp_directory = runWisp.wisp_directory
     File wisp_summary = runWisp.wisp_summary
-    File wisp_snv_results = runWisp.wisp_snv_results
+    File? wisp_snv_results = runWisp.wisp_snv_results
     File sage_plasma_vcf = mergePlasmaVcfs.merged_vcf
     File sage_plasma_vcf_index = mergePlasmaVcfs.merged_vcf_index
     File sage_plasma_bqr = mergePlasmaBqr.merged_bqr_zip
@@ -313,6 +351,37 @@ task extractName {
   }
 }
 
+task splitPonByChromosome {
+  input {
+    String PON 
+    String chromosome
+    String modules
+    Int memory = 4
+    Int timeout = 10
+  }
+
+  command <<<
+    set -euo pipefail
+    
+    # Extract just this chromosome from PON
+    bcftools view -r ~{chromosome} ~{PON} -O z -o pon.~{chromosome}.vcf.gz
+    tabix -p vcf pon.~{chromosome}.vcf.gz
+  >>>
+
+  runtime {
+    memory: "~{memory} GB"
+    timeout: "~{timeout}"
+    modules: "~{modules}"
+  }
+
+  output {
+    File chr_pon = "pon.~{chromosome}.vcf.gz"
+    File chr_pon_index = "pon.~{chromosome}.vcf.gz.tbi"
+  }
+}
+
+
+
 task amber {
   input {
     String tumour_name
@@ -321,6 +390,7 @@ task amber {
     String normal_name
     File normal_bam
     File normal_bai
+    String? output_prefix  
     String amberScript = "java -Xmx32G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication"
     String PON
     String genomeVersion
@@ -339,6 +409,7 @@ task amber {
     normal_name: "Name for Normal sample"
     normal_bam: "Normal bam"
     normal_bai: "Matching bai for Normal bam"
+    output_prefix: "prefix for output"
     amberScript: "location of AMBER script"
     PON: "Panel of Normal (PON) file, generated for AMBER"
     genomeVersion: "genome version (37 or 38)"
@@ -350,21 +421,23 @@ task amber {
     timeout: "Hours before task timeout"
   }
 
+  String file_prefix = select_first([output_prefix, tumour_name])
+
   command <<<
     set -euo pipefail
 
-    mkdir ~{tumour_name}.amber  
+    mkdir ~{file_prefix}.amber  
 
     ~{amberScript} \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
-      -output_dir ~{tumour_name}.amber/ \
+      -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
       -ref_genome_version ~{genomeVersion} \
       -min_mapping_quality ~{min_mapping_quality} \
       -min_base_quality ~{min_base_quality} 
 
-    zip -r ~{tumour_name}.amber.zip ~{tumour_name}.amber/
+    zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
 
   >>>
 
@@ -376,11 +449,91 @@ task amber {
   }
 
   output {
-    File output_directory = "~{tumour_name}.amber.zip"
+    File output_directory = "~{file_prefix}.amber.zip"
   }
   meta {
     output_meta: {
       output_directory: "Zipped AMBER results directory"
+    }
+  }
+}
+
+task mergeAmberChromosomes {
+  input {
+    Array[File] chr_zips
+    String tumour_name
+    Int memory = 8
+    Int timeout = 10
+    String modules
+  }
+
+  command <<<
+    set -euo pipefail
+
+    mkdir -p ~{tumour_name}.amber
+    mkdir -p temp
+
+    # Unzip all chromosome results
+    for zip_file in ~{sep=' ' chr_zips}; do
+      unzip -o ${zip_file} -d temp/
+    done
+
+    # Get first file without using head in subshell
+    first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
+    zcat "$first_baf" | sed -n '1p' > temp_header.txt
+    zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
+    cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
+    rm temp_header.txt temp_data.txt
+
+    # Use sed instead of head for other merges too
+    first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
+    sed -n '1p' "$first_pcf" > temp_header_pcf.txt
+    tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
+    cat temp_header_pcf.txt temp_data_pcf.txt > ~{tumour_name}.amber/~{tumour_name}.amber.baf.pcf
+    rm temp_header_pcf.txt temp_data_pcf.txt
+
+    cp $(find temp -name "*.amber.qc" -type f | sed -n '1p') ~{tumour_name}.amber/~{tumour_name}.amber.qc
+
+    if ls temp/*/*.amber.contamination.tsv 1> /dev/null 2>&1; then
+      {
+        head -n1 $(ls temp/*/*.amber.contamination.tsv | sort -V | head -n1)
+        tail -q -n +2 temp/*/*.amber.contamination.tsv | sort -k1,1V -k2,2n
+      } > ~{tumour_name}.amber/~{tumour_name}.amber.contamination.tsv
+    fi
+
+    if ls temp/*/*.amber.contamination.vcf.gz 1> /dev/null 2>&1; then
+      bcftools concat $(ls temp/*/*.amber.contamination.vcf.gz | sort -V) | \
+        bcftools sort -O z -o ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
+      tabix -p vcf ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
+    fi
+
+    if ls temp/*/*.amber.homozygousregion.tsv 1> /dev/null 2>&1; then
+      {
+        head -n1 $(ls temp/*/*.amber.homozygousregion.tsv | sort -V | head -n1)
+        tail -q -n +2 temp/*/*.amber.homozygousregion.tsv | sort -k1,1V -k2,2n
+      } > ~{tumour_name}.amber/~{tumour_name}.amber.homozygousregion.tsv
+    fi
+
+    if find temp -name "amber.version" -type f | grep -q .; then
+      cp $(find temp -name "amber.version" -type f | head -n1) ~{tumour_name}.amber/amber.version
+    fi
+
+    zip -r ~{tumour_name}.amber.zip ~{tumour_name}.amber/
+  >>>
+
+  runtime {
+    memory: "~{memory} GB"
+    timeout: "~{timeout}"
+    modules: "~{modules}"
+  }
+
+  output {
+    File output_directory = "~{tumour_name}.amber.zip"
+  }
+
+  meta {
+    output_meta: {
+      output_directory: "Zipped merged AMBER results directory"
     }
   }
 }
@@ -723,8 +876,8 @@ task runWisp {
 
   output {
     File wisp_directory = "~{plasma_name}.wisp.zip"
-    File wisp_summary = "~{plasma_name}.wisp/~{plasma_name}.wisp.summary.tsv"
-    File wisp_snv_results = "~{plasma_name}.wisp/~{plasma_name}.wisp.snv.tsv"
+    File wisp_summary = "~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.summary.tsv"
+    File? wisp_snv_results = "~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.snv.tsv"  # Optional - may not exist
   }
 
   meta {

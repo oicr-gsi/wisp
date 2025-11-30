@@ -41,6 +41,7 @@ workflow wisp {
     normal_bai: "Input normal file index (bai) of primary sample"
     plasma_bam: "Input of bam file of plasma from same donor as primary sample"
     plasma_bai: "Input of bam index file of plasma from same donor"
+    donor: "Patient identifier"
     genomeVersion: "Genome Version, only 38 supported"
     sage_primary_vcf: "Pre-computed SAGE VCF from primary tumor/normal run"
     sage_primary_vcf_index: "Index for pre-computed SAGE VCF"
@@ -289,7 +290,10 @@ workflow wisp {
     output_meta: {
       wisp_directory: "Zipped WISP output directory",
       wisp_summary: "WISP tumor fraction summary",
-      wisp_snv_results: "Per-variant SNV results"
+      wisp_snv_results: "Per-variant SNV results",
+      sage_plasma_vcf: "SAGE VCF with plasma sample appended",
+      sage_plasma_vcf_index: "Index for SAGE plasma VCF",
+      sage_plasma_bqr: "Zipped SAGE BQR results directory for plasma"
     }
   }
 
@@ -358,6 +362,13 @@ task splitPonByChromosome {
     String modules
     Int memory = 4
     Int timeout = 10
+  }
+  parameter_meta {
+    PON: "Panel of Normal (PON) file, generated for AMBER"
+    chromosome: "Chromosome to extract from PON"
+    modules: "Required environment modules"
+    memory: "Memory allocated for this job (GB)"
+    timeout: "Hours before task timeout"
   }
 
   command <<<
@@ -465,6 +476,14 @@ task mergeAmberChromosomes {
     Int memory = 8
     Int timeout = 10
     String modules
+  }
+
+  parameter_meta {
+    chr_zips: "Array of chromosome-split AMBER result zips"
+    tumour_name: "Name for Tumour sample"
+    memory: "Memory allocated for this job (GB)"
+    timeout: "Hours before task timeout"
+    modules: "Required environment modules"
   }
 
   command <<<
@@ -730,6 +749,14 @@ task mergeVcfs {
     Int memory = 8
     Int timeout = 4
   }
+  parameter_meta {
+    vcfs: "Array of VCF files to merge"
+    vcf_indices: "Array of VCF index files"
+    sample_name: "Sample name for output files"
+    modules: "Required environment modules"
+    memory: "Memory allocated for this job (GB)"
+    timeout: "Hours before task timeout"
+  }
 
   command <<<
     set -euo pipefail
@@ -770,6 +797,12 @@ task mergeBqrDirs {
     String sample_name
     Int memory = 4
     Int timeout = 2
+  }
+  parameter_meta {
+    bqr_zips: "Array of zipped BQR directories to merge"
+    sample_name: "Sample name for output files"
+    memory: "Memory allocated for this job (GB)"
+    timeout: "Hours before task timeout"
   }
 
   command <<<
@@ -928,6 +961,12 @@ task purple {
     refFasta: "fasta of reference genome"
     gcProfile: "GC profile, generated for COBALT"
     min_diploid_tumor_ratio_count: "smooth over contiguous segments"
+    min_ploidy: "minimum ploidy to consider"
+    max_ploidy: "maximum ploidy to consider"
+    min_purity: "minimum purity to consider"
+    max_purity: "maximum purity to consider"
+    ploidy_penalty_factor: "ploidy penalty factor"
+    ploidy_penalty_standard_deviation: "ploidy penalty standard deviation"
     genomeVersion: "genome version for AMBER, default set to V38"
     purpleScript: "location of PURPLE script"
     modules: "Required environment modules"

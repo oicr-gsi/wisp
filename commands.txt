@@ -1,9 +1,7 @@
 ## Commands
-This section lists command(s) run by WISP workflow
+This section lists command(s) run by wisp workflow
 
-* Running WISP
-
-The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulating tumor DNA (ctDNA) fraction in plasma samples by leveraging somatic variants and copy number profiles derived from matched primary tumor sequencing data.
+* Running wisp
 
 ```
     set -euo pipefail
@@ -16,20 +14,80 @@ The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulati
 ```
 ```
     set -euo pipefail
+    
+    # Extract just this chromosome from PON
+    bcftools view -r ~{chromosome} ~{PON} -O z -o pon.~{chromosome}.vcf.gz
+    tabix -p vcf pon.~{chromosome}.vcf.gz
+```
+```
+    set -euo pipefail
 
-    mkdir ~{tumour_name}.amber  
+    mkdir ~{file_prefix}.amber  
 
     ~{amberScript} \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
-      -output_dir ~{tumour_name}.amber/ \
+      -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
       -ref_genome_version ~{genomeVersion} \
       -min_mapping_quality ~{min_mapping_quality} \
       -min_base_quality ~{min_base_quality} 
 
-    zip -r ~{tumour_name}.amber.zip ~{tumour_name}.amber/
+    zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
 
+```
+```
+    set -euo pipefail
+
+    mkdir -p ~{tumour_name}.amber
+    mkdir -p temp
+
+    # Unzip all chromosome results
+    for zip_file in ~{sep=' ' chr_zips}; do
+      unzip -o ${zip_file} -d temp/
+    done
+
+    # Get first file without using head in subshell
+    first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
+    zcat "$first_baf" | sed -n '1p' > temp_header.txt
+    zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
+    cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
+    rm temp_header.txt temp_data.txt
+
+    # Use sed instead of head for other merges too
+    first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
+    sed -n '1p' "$first_pcf" > temp_header_pcf.txt
+    tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
+    cat temp_header_pcf.txt temp_data_pcf.txt > ~{tumour_name}.amber/~{tumour_name}.amber.baf.pcf
+    rm temp_header_pcf.txt temp_data_pcf.txt
+
+    cp $(find temp -name "*.amber.qc" -type f | sed -n '1p') ~{tumour_name}.amber/~{tumour_name}.amber.qc
+
+    if ls temp/*/*.amber.contamination.tsv 1> /dev/null 2>&1; then
+      {
+        head -n1 $(ls temp/*/*.amber.contamination.tsv | sort -V | head -n1)
+        tail -q -n +2 temp/*/*.amber.contamination.tsv | sort -k1,1V -k2,2n
+      } > ~{tumour_name}.amber/~{tumour_name}.amber.contamination.tsv
+    fi
+
+    if ls temp/*/*.amber.contamination.vcf.gz 1> /dev/null 2>&1; then
+      bcftools concat $(ls temp/*/*.amber.contamination.vcf.gz | sort -V) | \
+        bcftools sort -O z -o ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
+      tabix -p vcf ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
+    fi
+
+    if ls temp/*/*.amber.homozygousregion.tsv 1> /dev/null 2>&1; then
+      {
+        head -n1 $(ls temp/*/*.amber.homozygousregion.tsv | sort -V | head -n1)
+        tail -q -n +2 temp/*/*.amber.homozygousregion.tsv | sort -k1,1V -k2,2n
+      } > ~{tumour_name}.amber/~{tumour_name}.amber.homozygousregion.tsv
+    fi
+
+    if find temp -name "amber.version" -type f | grep -q .; then
+      cp $(find temp -name "amber.version" -type f | head -n1) ~{tumour_name}.amber/amber.version
+    fi
+
+    zip -r ~{tumour_name}.amber.zip ~{tumour_name}.amber/
 ```
 ```
     set -euo pipefail
@@ -58,37 +116,64 @@ The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulati
 ```
 ```
     set -euo pipefail
-    mkdir -p ~{tumour_name}.sage.bqr 
-
-    if ~{append_mode}; then
-        sageClass="com.hartwig.hmftools.sage.append.SageAppendApplication"
-    else
-        sageClass="com.hartwig.hmftools.sage.SageApplication"
-    fi
+    
+    mkdir -p ~{reference_name}.sage.bqr
+    
     sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
     
-  
-    java -Xmx32G -cp ${sage_jar} ${sageClass}   \
-      ~{if append_mode then "" else "-tumor " + tumour_name} \
-      ~{if append_mode then "" else "-tumor_bam " + tumour_bam} \
+    java -Xmx32G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
       -ref_genome ~{refFasta} \
-      ~{"-input_vcf " + input_vcf} \
-      ~{if !defined(input_vcf) then "-ensembl_data_dir " + ensemblDir else ""} \
-      ~{if !defined(input_vcf) then "-high_confidence_bed " + highConfBed else ""} \
-      ~{if !defined(input_vcf) then "-hotspots " + hotspots else ""} \
-      -output_vcf ~{tumour_name}.sage.vcf.gz \
+      -input_vcf ~{input_vcf} \
+      -specific_chr ~{chromosome} \
+      -output_vcf ~{reference_name}.~{chromosome}.sage.vcf.gz \
       -threads ~{threads} \
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
       -hard_min_tumor_vaf ~{hard_min_tumor_vaf}
 
-    mv *.sage.bqr.tsv ~{tumour_name}.sage.bqr/ 2>/dev/null || true
-    zip -r ~{tumour_name}.sage.bqr.zip ~{tumour_name}.sage.bqr/
+    mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
+    zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
 
+```
+```
+    set -euo pipefail
+    
+    # Create file list for bcftools concat
+    for vcf in ~{sep=' ' vcfs}; do
+      echo "$vcf" >> vcf_list.txt
+    done
+    
+    # Sort by chromosome order
+    sort -V vcf_list.txt > vcf_list_sorted.txt
+    
+    # Concatenate VCFs in order
+    bcftools concat \
+      --file-list vcf_list_sorted.txt \
+      --output-type z \
+      --output ~{sample_name}.sage.vcf.gz
+    
+    # Index the merged VCF
+    tabix -p vcf ~{sample_name}.sage.vcf.gz
+```
+```
+    set -euo pipefail
+    
+    mkdir -p ~{sample_name}.sage.bqr
+    
+    # Unzip all BQR files into the same directory
+    for bqr_zip in ~{sep=' ' bqr_zips}; do
+      unzip -o "$bqr_zip" -d temp_bqr/
+    done
+    
+    # Move all .tsv files to final directory
+    find temp_bqr -name "*.sage.bqr.tsv" -exec mv {} ~{sample_name}.sage.bqr/ \;
+    
+    # Zip the merged directory
+    zip -r ~{sample_name}.sage.bqr.zip ~{sample_name}.sage.bqr/
 ```
 ```
     set -euo pipefail
@@ -108,8 +193,8 @@ The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulati
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
       -purple_dir ~{tumour_name}.solPrimary.purple/ \
-      -amber_dir "merged_amber"/ \
-      -cobalt_dir "merged_cobalt"/ \
+      -amber_dir merged_amber/ \
+      -cobalt_dir merged_cobalt/ \
       -somatic_vcf ~{somatic_vcf} \
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
@@ -134,8 +219,8 @@ The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulati
       -ensembl_data_dir ~{ensemblDir}  \
       -reference ~{normal_name} -tumor ~{tumour_name}  \
       -amber ~{tumour_name}.amber -cobalt ~{tumour_name}.cobalt \
-      ~{"-ploidy_penalty_factor" + ploidy_penalty_factor} \
-      ~{"-ploidy_penalty_standard_deviation" + ploidy_penalty_standard_deviation} \
+      ~{"-ploidy_penalty_factor " + ploidy_penalty_factor} \
+      ~{"-ploidy_penalty_standard_deviation " + ploidy_penalty_standard_deviation} \
       ~{"-somatic_vcf " + somatic_vcf} \
       ~{"-min_ploidy " + min_ploidy} \
       ~{"-max_ploidy " + max_ploidy} \

@@ -14,6 +14,7 @@
             "wisp.amberPrimaryChr.amberScrip": null,
             "wisp.amberPrimaryChr.min_mapping_quality": null,
             "wisp.amberPrimaryChr.min_base_quality": null,
+            "wisp.amberPrimaryChr.amberScript": null,
             "wisp.amberPlasmaChr.amberScript": null,
             "wisp.amberPlasmaChr.min_mapping_quality": null,
             "wisp.amberPlasmaChr.min_base_quality": null,			

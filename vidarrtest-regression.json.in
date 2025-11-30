@@ -10,7 +10,13 @@
             "wisp.amberPrimary.amberScript": null,			
             "wisp.amberPrimary.memory": null,			
             "wisp.amberPrimary.min_base_quality": null, 			
-            "wisp.amberPrimary.min_mapping_quality": null,			
+            "wisp.amberPrimary.min_mapping_quality": null,
+            "wisp.amberPrimaryChr.amberScrip": null,
+            "wisp.amberPrimaryChr.min_mapping_quality": null,
+            "wisp.amberPrimaryChr.min_base_quality": null,
+            "wisp.amberPlasmaChr.amberScript": null,
+            "wisp.amberPlasmaChr.min_mapping_quality": null,
+            "wisp.amberPlasmaChr.min_base_quality": null,			
             "wisp.amberPrimary.threads": null,			
             "wisp.amberPrimary.timeout": null,			
             "wisp.chromosomes": null,
@@ -149,6 +155,9 @@
             "wisp.sage.min_map_quality": null, 
             "wisp.sage.threads": null,
             "wisp.sage.timeout": null, 
+            "wisp.splitPonByChromosome.memory": null,
+            "wisp.splitPonByChromosome.timeout": null,
+
             "wisp.tumour_bai": {
                         "contents": {
                             "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",

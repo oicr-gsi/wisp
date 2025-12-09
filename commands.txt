@@ -1,13 +1,13 @@
 ## Commands
-This section lists command(s) run by wisp workflow
+This section lists command(s) run by WISP workflow
 
-* Running wisp
+* Running WISP  
 
 ```
     set -euo pipefail
 
     if [ -f "~{inputBam}" ]; then
-      gatk --java-options "-Xmx1g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
+      gatk --java-options "-Xmx~{heapRam}g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
     fi
 
     cat input_name.txt
@@ -22,16 +22,17 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    mkdir ~{file_prefix}.amber  
+    mkdir ~{file_prefix}.amber
 
-    ~{amberScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
       -ref_genome_version ~{genomeVersion} \
       -min_mapping_quality ~{min_mapping_quality} \
-      -min_base_quality ~{min_base_quality} 
+      -min_base_quality ~{min_base_quality} \
+      ~{additionalParameters}
 
     zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
 
@@ -47,14 +48,12 @@ This section lists command(s) run by wisp workflow
       unzip -o ${zip_file} -d temp/
     done
 
-    # Get first file without using head in subshell
     first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
     zcat "$first_baf" | sed -n '1p' > temp_header.txt
     zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
     cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
     rm temp_header.txt temp_data.txt
 
-    # Use sed instead of head for other merges too
     first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
     sed -n '1p' "$first_pcf" > temp_header_pcf.txt
     tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
@@ -92,15 +91,16 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    mkdir ~{tumour_name}.cobalt 
+    mkdir ~{tumour_name}.cobalt
 
-    ~{colbaltScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{tumour_name}.cobalt/ \
       -gc_profile ~{gcProfile} \
       -pcf_gamma ~{gamma} \
-      -min_quality ~{min_mapping_quality}
+      -min_quality ~{min_mapping_quality} \
+      ~{additionalParameters}
 
     zip -r ~{tumour_name}.cobalt.zip ~{tumour_name}.cobalt/
 
@@ -116,12 +116,12 @@ This section lists command(s) run by wisp workflow
 ```
 ```
     set -euo pipefail
-    
+
     mkdir -p ~{reference_name}.sage.bqr
-    
+
     sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
-    
-    java -Xmx32G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
+
+    java -Xmx~{heapRam}G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
@@ -133,7 +133,8 @@ This section lists command(s) run by wisp workflow
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
-      -hard_min_tumor_vaf ~{hard_min_tumor_vaf}
+      -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
+      ~{additionalParameters}
 
     mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
     zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
@@ -188,7 +189,7 @@ This section lists command(s) run by wisp workflow
     mkdir -p ~{plasma_name}.wisp
 
     # Run WISP
-    java -Xmx16G -jar $WISP_ROOT/wisp.jar \
+    java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
       -patient_id ~{donor} \
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
@@ -199,7 +200,8 @@ This section lists command(s) run by wisp workflow
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
-      -threads ~{threads}
+      -threads ~{threads} \
+      ~{additionalParameters}
 
     # Zip output
     zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
@@ -208,11 +210,11 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    unzip ~{amber_directory} 
-    unzip ~{cobalt_directory} 
-    mkdir ~{outfilePrefix}.purple 
+    unzip ~{amber_directory}
+    unzip ~{cobalt_directory}
+    mkdir ~{outfilePrefix}.purple
 
-    ~{purpleScript} \
+    java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
       -ref_genome_version ~{genomeVersion} \
       -ref_genome ~{refFasta}  \
       -gc_profile ~{gcProfile} \
@@ -228,7 +230,8 @@ This section lists command(s) run by wisp workflow
       ~{"-max_purity " + max_purity} \
       -no_charts \
       -min_diploid_tumor_ratio_count ~{min_diploid_tumor_ratio_count} \
-      -output_dir ~{outfilePrefix}.purple 
+      -output_dir ~{outfilePrefix}.purple \
+      ~{additionalParameters}
 
     zip -r ~{outfilePrefix}.purple.zip ~{outfilePrefix}.purple/
 

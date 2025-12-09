@@ -1,9 +1,8 @@
 # wisp
 
-WISP tumor fraction estimation with chromosome-split SAGE plasma append
+The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulating tumor DNA (ctDNA) fraction in plasma samples by leveraging somatic variants and copy number profiles derived from matched primary tumor sequencing data.
 
 ## Overview
-
 ```mermaid
 flowchart TD
     subgraph inputs [Inputs]
@@ -87,6 +86,7 @@ flowchart TD
     runWisp --> summary
     runWisp --> snv_results
 ```
+
 ### Inputs
 The workflow requires three inputs: a primary tumor sample, a matched normal sample (for germline filtering), and a plasma/cfDNA sample from the same patient. By first characterizing the somatic landscape of the primary tumor, the workflow can then quantify the fraction of cell-free DNA in plasma that originates from tumor cells.
 ### Workflow Description
@@ -94,7 +94,7 @@ The workflow requires three inputs: a primary tumor sample, a matched normal sam
 * Sample Preparation: 
 Sample names are extracted from BAM headers using GATK GetSampleName to ensure consistent naming across all downstream tools.
 * Primary Tumor Characterization: 
-Three tools run in parallel on the tumor-normal pair. AMBER calculates B-allele frequencies at known heterozygous germline SNP positions. COBALT measures read depth ratios across the genome for copy number analysis. SAGE performs somatic variant calling to identify SNVs and small indels present in the tumor (Note SAGE running on primary is implemented in separate SAGE workflow: https://github.com/oicr-gsi/sage).
+Three tools run in parallel on the tumor-normal pair. AMBER calculates B-allele frequencies at known heterozygous germline SNP positions. COBALT measures read depth ratios across the genome for copy number analysis. SAGE performs somatic variant calling to identify SNVs and small indels present in the tumor.
 * Purity and Ploidy Estimation: Purple integrates AMBER, COBALT, and SAGE outputs to estimate tumor purity, overall ploidy, and genome-wide copy number segments. This establishes the reference somatic profile for the primary tumor.
 * Plasma Sample Processing: AMBER and COBALT are run on the plasma sample against the same matched normal, generating allele frequency and read depth data from the cfDNA.
 Data Integration: AMBER and COBALT outputs from both primary and plasma analyses are merged into unified directories, as WISP requires data from both samples for comparison.
@@ -149,28 +149,32 @@ Parameter|Value|Default|Description
 Parameter|Value|Default|Description
 ---|---|---|---
 `extractTumorName.memory`|Int|4|Memory allocated for this job (GB)
+`extractTumorName.heapRam`|Int|1|Heap RAM allocation for GATK (GB)
 `extractTumorName.timeout`|Int|4|Hours before task timeout
 `extractNormalName.memory`|Int|4|Memory allocated for this job (GB)
+`extractNormalName.heapRam`|Int|1|Heap RAM allocation for GATK (GB)
 `extractNormalName.timeout`|Int|4|Hours before task timeout
 `extractPlasmaName.memory`|Int|4|Memory allocated for this job (GB)
+`extractPlasmaName.heapRam`|Int|1|Heap RAM allocation for GATK (GB)
 `extractPlasmaName.timeout`|Int|4|Hours before task timeout
 `splitPonByChromosome.memory`|Int|4|Memory allocated for this job (GB)
 `splitPonByChromosome.timeout`|Int|10|Hours before task timeout
-`amberPrimaryChr.amberScript`|String|"java -Xmx32G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication"|location of AMBER script
 `amberPrimaryChr.min_mapping_quality`|Int|30|Minimum mapping quality for an alignment to be used
 `amberPrimaryChr.min_base_quality`|Int|25|Minimum quality for a base to be considered
+`amberPrimaryChr.heapRam`|Int|32|Heap RAM allocation for AMBER (GB)
+`amberPrimaryChr.additionalParameters`|String|""|Additional parameters to pass to AMBER
 `amberPrimary.memory`|Int|8|Memory allocated for this job (GB)
 `amberPrimary.timeout`|Int|10|Hours before task timeout
-`cobaltPrimary.colbaltScript`|String|"java -Xmx8G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication"|location of COBALT script
 `cobaltPrimary.gamma`|String|"300"|gamma (penalty) value for segmenting
 `cobaltPrimary.min_mapping_quality`|Int|30|Minimum mapping quality for an alignment to be used
 `cobaltPrimary.threads`|Int|8|Requested CPU threads
 `cobaltPrimary.memory`|Int|32|Memory allocated for this job (GB)
+`cobaltPrimary.heapRam`|Int|8|Heap RAM allocation for COBALT (GB)
 `cobaltPrimary.timeout`|Int|100|Hours before task timeout
+`cobaltPrimary.additionalParameters`|String|""|Additional parameters to pass to COBALT
 `purple.solution_name`|String|"Primary"|Name of solution
 `purple.outfilePrefix`|String|tumour_name + ".sol" + solution_name|Prefix of output file
 `purple.min_diploid_tumor_ratio_count`|Int|60|smooth over contiguous segments
-`purple.purpleScript`|String|"java -Xmx8G -jar $HMFTOOLS_ROOT/purple.jar"|location of PURPLE script
 `purple.min_ploidy`|String?|None|minimum ploidy to consider
 `purple.max_ploidy`|String?|None|maximum ploidy to consider
 `purple.min_purity`|String?|None|minimum purity to consider
@@ -179,30 +183,38 @@ Parameter|Value|Default|Description
 `purple.ploidy_penalty_standard_deviation`|String?|None|ploidy penalty standard deviation
 `purple.threads`|Int|8|Requested CPU threads
 `purple.memory`|Int|32|Memory allocated for this job (GB)
+`purple.heapRam`|Int|8|Heap RAM allocation for PURPLE (GB)
 `purple.timeout`|Int|100|Hours before task timeout
-`amberPlasmaChr.amberScript`|String|"java -Xmx32G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication"|location of AMBER script
+`purple.additionalParameters`|String|""|Additional parameters to pass to PURPLE
 `amberPlasmaChr.min_mapping_quality`|Int|30|Minimum mapping quality for an alignment to be used
 `amberPlasmaChr.min_base_quality`|Int|25|Minimum quality for a base to be considered
+`amberPlasmaChr.heapRam`|Int|32|Heap RAM allocation for AMBER (GB)
+`amberPlasmaChr.additionalParameters`|String|""|Additional parameters to pass to AMBER
 `amberPlasma.memory`|Int|8|Memory allocated for this job (GB)
 `amberPlasma.timeout`|Int|10|Hours before task timeout
-`cobaltPlasma.colbaltScript`|String|"java -Xmx8G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication"|location of COBALT script
 `cobaltPlasma.gamma`|String|"300"|gamma (penalty) value for segmenting
 `cobaltPlasma.min_mapping_quality`|Int|30|Minimum mapping quality for an alignment to be used
 `cobaltPlasma.threads`|Int|8|Requested CPU threads
 `cobaltPlasma.memory`|Int|32|Memory allocated for this job (GB)
+`cobaltPlasma.heapRam`|Int|8|Heap RAM allocation for COBALT (GB)
 `cobaltPlasma.timeout`|Int|100|Hours before task timeout
+`cobaltPlasma.additionalParameters`|String|""|Additional parameters to pass to COBALT
 `sage.min_map_quality`|Int|10|Minimum mapping quality
 `sage.hard_min_tumor_qual`|Int|50|Hard minimum tumor quality
 `sage.hard_min_tumor_raw_alt_support`|Int|2|Minimum raw alt support
 `sage.hard_min_tumor_vaf`|Float|0.002|Minimum tumor VAF
 `sage.threads`|Int|8|Requested CPU threads
 `sage.memory`|Int|40|Memory allocated for this job (GB)
+`sage.heapRam`|Int|32|Heap RAM allocation for SAGE (GB)
 `sage.timeout`|Int|24|Hours before task timeout
+`sage.additionalParameters`|String|""|Additional parameters to pass to SAGE
 `mergePlasmaVcfs.memory`|Int|8|Memory allocated for this job (GB)
 `mergePlasmaVcfs.timeout`|Int|4|Hours before task timeout
 `mergePlasmaBqr.memory`|Int|4|Memory allocated for this job (GB)
 `mergePlasmaBqr.timeout`|Int|2|Hours before task timeout
+`runWisp.additionalParameters`|String|""|Additional parameters to pass to WISP
 `runWisp.threads`|Int|4|Requested CPU threads
+`runWisp.heapRam`|Int|16|Heap RAM allocation for WISP (GB)
 `runWisp.memory`|Int|16|Memory allocated for this job (GB)
 `runWisp.timeout`|Int|50|Hours before task timeout
 
@@ -219,15 +231,15 @@ Output | Type | Description | Labels
 `sage_plasma_bqr`|File|Zipped SAGE BQR results directory for plasma|
 
 ## Commands
-This section lists command(s) run by wisp workflow
+This section lists command(s) run by WISP workflow
 
-* Running wisp
+* Running WISP  
 
 ```
     set -euo pipefail
 
     if [ -f "~{inputBam}" ]; then
-      gatk --java-options "-Xmx1g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
+      gatk --java-options "-Xmx~{heapRam}g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
     fi
 
     cat input_name.txt
@@ -242,16 +254,17 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    mkdir ~{file_prefix}.amber  
+    mkdir ~{file_prefix}.amber
 
-    ~{amberScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
       -ref_genome_version ~{genomeVersion} \
       -min_mapping_quality ~{min_mapping_quality} \
-      -min_base_quality ~{min_base_quality} 
+      -min_base_quality ~{min_base_quality} \
+      ~{additionalParameters}
 
     zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
 
@@ -267,14 +280,12 @@ This section lists command(s) run by wisp workflow
       unzip -o ${zip_file} -d temp/
     done
 
-    # Get first file without using head in subshell
     first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
     zcat "$first_baf" | sed -n '1p' > temp_header.txt
     zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
     cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
     rm temp_header.txt temp_data.txt
 
-    # Use sed instead of head for other merges too
     first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
     sed -n '1p' "$first_pcf" > temp_header_pcf.txt
     tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
@@ -312,15 +323,16 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    mkdir ~{tumour_name}.cobalt 
+    mkdir ~{tumour_name}.cobalt
 
-    ~{colbaltScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{tumour_name}.cobalt/ \
       -gc_profile ~{gcProfile} \
       -pcf_gamma ~{gamma} \
-      -min_quality ~{min_mapping_quality}
+      -min_quality ~{min_mapping_quality} \
+      ~{additionalParameters}
 
     zip -r ~{tumour_name}.cobalt.zip ~{tumour_name}.cobalt/
 
@@ -336,12 +348,12 @@ This section lists command(s) run by wisp workflow
 ```
 ```
     set -euo pipefail
-    
+
     mkdir -p ~{reference_name}.sage.bqr
-    
+
     sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
-    
-    java -Xmx32G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
+
+    java -Xmx~{heapRam}G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
@@ -353,7 +365,8 @@ This section lists command(s) run by wisp workflow
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
-      -hard_min_tumor_vaf ~{hard_min_tumor_vaf}
+      -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
+      ~{additionalParameters}
 
     mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
     zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
@@ -408,7 +421,7 @@ This section lists command(s) run by wisp workflow
     mkdir -p ~{plasma_name}.wisp
 
     # Run WISP
-    java -Xmx16G -jar $WISP_ROOT/wisp.jar \
+    java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
       -patient_id ~{donor} \
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
@@ -419,7 +432,8 @@ This section lists command(s) run by wisp workflow
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
-      -threads ~{threads}
+      -threads ~{threads} \
+      ~{additionalParameters}
 
     # Zip output
     zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
@@ -428,11 +442,11 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    unzip ~{amber_directory} 
-    unzip ~{cobalt_directory} 
-    mkdir ~{outfilePrefix}.purple 
+    unzip ~{amber_directory}
+    unzip ~{cobalt_directory}
+    mkdir ~{outfilePrefix}.purple
 
-    ~{purpleScript} \
+    java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
       -ref_genome_version ~{genomeVersion} \
       -ref_genome ~{refFasta}  \
       -gc_profile ~{gcProfile} \
@@ -448,7 +462,8 @@ This section lists command(s) run by wisp workflow
       ~{"-max_purity " + max_purity} \
       -no_charts \
       -min_diploid_tumor_ratio_count ~{min_diploid_tumor_ratio_count} \
-      -output_dir ~{outfilePrefix}.purple 
+      -output_dir ~{outfilePrefix}.purple \
+      ~{additionalParameters}
 
     zip -r ~{outfilePrefix}.purple.zip ~{outfilePrefix}.purple/
 

@@ -310,11 +310,12 @@ workflow wisp {
 task extractName {
   input {
     String modules
-    String refFasta 
-    String refFai 
+    String refFasta
+    String refFai
     File inputBam
     File inputBai
     Int memory = 4
+    Int heapRam = 1
     Int timeout = 4
   }
 
@@ -325,6 +326,7 @@ task extractName {
     refFai: "Reference fai index"
     modules: "Required environment modules"
     memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for GATK (GB)"
     timeout: "Hours before task timeout"
   }
 
@@ -332,7 +334,7 @@ task extractName {
     set -euo pipefail
 
     if [ -f "~{inputBam}" ]; then
-      gatk --java-options "-Xmx1g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
+      gatk --java-options "-Xmx~{heapRam}g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
     fi
 
     cat input_name.txt
@@ -401,8 +403,7 @@ task amber {
     String normal_name
     File normal_bam
     File normal_bai
-    String? output_prefix  
-    String amberScript = "java -Xmx32G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication"
+    String? output_prefix
     String PON
     String genomeVersion
     Int min_mapping_quality = 30
@@ -410,7 +411,9 @@ task amber {
     String modules
     Int threads = 8
     Int memory = 32
+    Int heapRam = 32
     Int timeout = 100
+    String additionalParameters = ""
   }
 
   parameter_meta {
@@ -421,15 +424,16 @@ task amber {
     normal_bam: "Normal bam"
     normal_bai: "Matching bai for Normal bam"
     output_prefix: "prefix for output"
-    amberScript: "location of AMBER script"
     PON: "Panel of Normal (PON) file, generated for AMBER"
     genomeVersion: "genome version (37 or 38)"
     min_mapping_quality: "Minimum mapping quality for an alignment to be used"
     min_base_quality: "Minimum quality for a base to be considered"
     modules: "Required environment modules"
     memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for AMBER (GB)"
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
+    additionalParameters: "Additional parameters to pass to AMBER"
   }
 
   String file_prefix = select_first([output_prefix, tumour_name])
@@ -437,16 +441,17 @@ task amber {
   command <<<
     set -euo pipefail
 
-    mkdir ~{file_prefix}.amber  
+    mkdir ~{file_prefix}.amber
 
-    ~{amberScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
       -ref_genome_version ~{genomeVersion} \
       -min_mapping_quality ~{min_mapping_quality} \
-      -min_base_quality ~{min_base_quality} 
+      -min_base_quality ~{min_base_quality} \
+      ~{additionalParameters}
 
     zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
 
@@ -497,14 +502,12 @@ task mergeAmberChromosomes {
       unzip -o ${zip_file} -d temp/
     done
 
-    # Get first file without using head in subshell
     first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
     zcat "$first_baf" | sed -n '1p' > temp_header.txt
     zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
     cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
     rm temp_header.txt temp_data.txt
 
-    # Use sed instead of head for other merges too
     first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
     sed -n '1p' "$first_pcf" > temp_header_pcf.txt
     tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
@@ -565,14 +568,15 @@ task cobalt {
     String normal_name
     File normal_bam
     File normal_bai
-    String colbaltScript = "java -Xmx8G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication"
     String gcProfile
     String gamma = "300"
     Int min_mapping_quality = 30
     String modules
     Int threads = 8
     Int memory = 32
+    Int heapRam = 8
     Int timeout = 100
+    String additionalParameters = ""
   }
 
   parameter_meta {
@@ -582,28 +586,30 @@ task cobalt {
     normal_name: "Name for Normal sample"
     normal_bam: "Normal bam"
     normal_bai: "Matching bai for Normal bam"
-    colbaltScript: "location of COBALT script"
     gcProfile: "GC profile, generated for COBALT"
     gamma: "gamma (penalty) value for segmenting"
     min_mapping_quality: "Minimum mapping quality for an alignment to be used"
     modules: "Required environment modules"
     memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for COBALT (GB)"
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
+    additionalParameters: "Additional parameters to pass to COBALT"
   }
 
   command <<<
     set -euo pipefail
 
-    mkdir ~{tumour_name}.cobalt 
+    mkdir ~{tumour_name}.cobalt
 
-    ~{colbaltScript} \
+    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{tumour_name}.cobalt/ \
       -gc_profile ~{gcProfile} \
       -pcf_gamma ~{gamma} \
-      -min_quality ~{min_mapping_quality}
+      -min_quality ~{min_mapping_quality} \
+      ~{additionalParameters}
 
     zip -r ~{tumour_name}.cobalt.zip ~{tumour_name}.cobalt/
 
@@ -660,14 +666,16 @@ task sage {
     String highConfBed
     File input_vcf
     File input_vcf_index
-    Int min_map_quality = 10 
+    Int min_map_quality = 10
     Int hard_min_tumor_qual = 50
-    Int hard_min_tumor_raw_alt_support = 2 
-    Float hard_min_tumor_vaf = 0.002 
+    Int hard_min_tumor_raw_alt_support = 2
+    Float hard_min_tumor_vaf = 0.002
     String modules
     Int threads = 8
     Int memory = 40
+    Int heapRam = 32
     Int timeout = 24
+    String additionalParameters = ""
   }
 
   parameter_meta {
@@ -684,22 +692,24 @@ task sage {
     input_vcf_index: "Index for input VCF"
     min_map_quality: "Minimum mapping quality"
     hard_min_tumor_qual: "Hard minimum tumor quality"
-    hard_min_tumor_raw_alt_support: "Minimum raw alt support" 
+    hard_min_tumor_raw_alt_support: "Minimum raw alt support"
     hard_min_tumor_vaf: "Minimum tumor VAF"
     modules: "Required environment modules"
     memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for SAGE (GB)"
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
+    additionalParameters: "Additional parameters to pass to SAGE"
   }
 
   command <<<
     set -euo pipefail
-    
+
     mkdir -p ~{reference_name}.sage.bqr
-    
+
     sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
-    
-    java -Xmx32G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
+
+    java -Xmx~{heapRam}G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
@@ -711,7 +721,8 @@ task sage {
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
-      -hard_min_tumor_vaf ~{hard_min_tumor_vaf}
+      -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
+      ~{additionalParameters}
 
     mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
     zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
@@ -846,7 +857,9 @@ task runWisp {
     String refFasta
     String genomeVersion
     String modules
+    String additionalParameters = ""
     Int threads = 4
+    Int heapRam = 16
     Int memory = 16
     Int timeout = 50
   }
@@ -863,7 +876,9 @@ task runWisp {
     bqr_dir: "Zipped SAGE BQR directory from plasma"
     refFasta: "Reference genome fasta"
     genomeVersion: "Genome version (37 or 38)"
+    additionalParameters: "Additional parameters to pass to WISP"
     modules: "Required environment modules"
+    heapRam: "Heap RAM allocation for WISP (GB)"
     memory: "Memory allocated for this job (GB)"
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
@@ -882,7 +897,7 @@ task runWisp {
     mkdir -p ~{plasma_name}.wisp
 
     # Run WISP
-    java -Xmx16G -jar $WISP_ROOT/wisp.jar \
+    java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
       -patient_id ~{donor} \
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
@@ -893,7 +908,8 @@ task runWisp {
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
-      -threads ~{threads}
+      -threads ~{threads} \
+      ~{additionalParameters}
 
     # Zip output
     zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
@@ -934,9 +950,8 @@ task purple {
     String ensemblDir
     String refFasta
     String genomeVersion
-    String gcProfile 
+    String gcProfile
     Int min_diploid_tumor_ratio_count = 60
-    String purpleScript = "java -Xmx8G -jar $HMFTOOLS_ROOT/purple.jar"
     String? min_ploidy
     String? max_ploidy
     String? min_purity
@@ -946,7 +961,9 @@ task purple {
     String modules
     Int threads = 8
     Int memory = 32
+    Int heapRam = 8
     Int timeout = 100
+    String additionalParameters = ""
   }
 
   parameter_meta {
@@ -968,21 +985,22 @@ task purple {
     ploidy_penalty_factor: "ploidy penalty factor"
     ploidy_penalty_standard_deviation: "ploidy penalty standard deviation"
     genomeVersion: "genome version for AMBER, default set to V38"
-    purpleScript: "location of PURPLE script"
     modules: "Required environment modules"
     memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for PURPLE (GB)"
     threads: "Requested CPU threads"
     timeout: "Hours before task timeout"
+    additionalParameters: "Additional parameters to pass to PURPLE"
   }
 
   command <<<
     set -euo pipefail
 
-    unzip ~{amber_directory} 
-    unzip ~{cobalt_directory} 
-    mkdir ~{outfilePrefix}.purple 
+    unzip ~{amber_directory}
+    unzip ~{cobalt_directory}
+    mkdir ~{outfilePrefix}.purple
 
-    ~{purpleScript} \
+    java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
       -ref_genome_version ~{genomeVersion} \
       -ref_genome ~{refFasta}  \
       -gc_profile ~{gcProfile} \
@@ -998,7 +1016,8 @@ task purple {
       ~{"-max_purity " + max_purity} \
       -no_charts \
       -min_diploid_tumor_ratio_count ~{min_diploid_tumor_ratio_count} \
-      -output_dir ~{outfilePrefix}.purple 
+      -output_dir ~{outfilePrefix}.purple \
+      ~{additionalParameters}
 
     zip -r ~{outfilePrefix}.purple.zip ~{outfilePrefix}.purple/
 

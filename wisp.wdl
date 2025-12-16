@@ -31,7 +31,6 @@ workflow wisp {
     String genomeVersion = "38"
     File sage_primary_vcf
     File sage_primary_vcf_index
-    
     Array[String] chromosomes = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22,chrX,chrY"]
   }
 
@@ -174,9 +173,9 @@ workflow wisp {
         PON = splitPonByChromosome.chr_pon[idx],
         genomeVersion = genomeVersion,
         modules = resources[genomeVersion].hmfModules,
-        threads = 2,  # Reduced since single chr
-        memory = 8,   # Reduced memory
-        timeout = 30  # Much shorter
+        threads = 2,  
+        memory = 8,   
+        timeout = 30  
     }
   }
 

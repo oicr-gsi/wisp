@@ -51,7 +51,7 @@ workflow wisp {
 
   Map[String,GenomeResources] resources = {
     "38": {
-      "wispModules": "wisp/v1.2-beta.3",
+      "wispModules": "wisp/v1.2-beta.3 hg38/p12",
       "hmfModules": "hmftools/1.1 hg38/p12 hmftools-data/53138",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
       "refFasta": "$HG38_ROOT/hg38_random.fa",

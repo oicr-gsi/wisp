@@ -2,7 +2,8 @@ version 1.0
 
 struct GenomeResources {
     String PON
-    String modules
+    String wispModules
+    String hmfModules
     String gatkModules
     String gcProfile
     String ensemblDir
@@ -50,11 +51,12 @@ workflow wisp {
 
   Map[String,GenomeResources] resources = {
     "38": {
-      "modules": "wisp/v1.2-beta.3 hmftools/1.1 hg38/p12 hmftools-data/53138 bcftools/1.9",
+      "wispModules": "wisp/v1.2-beta.3",
+      "hmfModules": "hmftools/1.1 hg38/p12 hmftools-data/53138",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
       "refFasta": "$HG38_ROOT/hg38_random.fa",
       "refFai": "$HG38_GRIDSS_INDEX_ROOT/hg38_random.fa.fai",
-      "PON" : "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/workflow/wisp/test/test_data/GermlineHetPon.38.vcf.gz",
+      "PON" : "$SAGE_DATA_ROOT/GermlineHetPon.38.vcf.gz",
       "ensemblDir": "$HMFTOOLS_DATA_ROOT/ensembl_data",
       "gcProfile": "$HMFTOOLS_DATA_ROOT/copy_number/GC_profile.1000bp.38.cnp",
       "pon_sgl_file": "$HMFTOOLS_DATA_ROOT/sv/sgl_pon.38.bed.gz",
@@ -62,9 +64,9 @@ workflow wisp {
       "known_hotspot_file": "$HMFTOOLS_DATA_ROOT/sv/known_fusions.38.bedpe",
       "repeat_mask_file": "$HMFTOOLS_DATA_ROOT/sv/repeat_mask_data.38.fa.gz",
       "knownfusion": "$HMFTOOLS_DATA_ROOT/sv/known_fusions.38.bedpe",
-      "hotspots": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/KnownHotspots.hg38.fixed.vcf.gz",
-      "driverGenePanel": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/DriverGenePanel.hg38.tsv",
-      "highConfBed": "/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/NA12878_GIAB_highconf_IllFB-IllGATKHC-CG-Ion-Solid_ALLCHROM_v3.2.2_highconf.bed"
+      "hotspots": "$SAGE_DATA_ROOT/KnownHotspots.hg38.fixed.vcf.gz",
+      "driverGenePanel": "$SAGE_DATA_ROOT/DriverGenePanel.hg38.tsv",
+      "highConfBed": "$SAGE_DATA_ROOT/highConfidenceBed"
     }
   }
 
@@ -100,7 +102,7 @@ workflow wisp {
       input:
         PON = resources[genomeVersion].PON,
         chromosome = chr,
-        modules = resources[genomeVersion].modules
+        modules = "bcftools/1.9 sage-data/1.0"
     }
   }
 
@@ -118,7 +120,7 @@ workflow wisp {
         output_prefix = extractTumorName.input_name + "." + chr_label,  
         PON = splitPonByChromosome.chr_pon[idx],
         genomeVersion = genomeVersion,
-        modules = resources[genomeVersion].modules,
+        modules = resources[genomeVersion].hmfModules,
         threads = 2,
         memory = 8,
         timeout = 30
@@ -129,7 +131,7 @@ workflow wisp {
     input:
       chr_zips = amberPrimaryChr.output_directory,
       tumour_name = extractTumorName.input_name,
-      modules = resources[genomeVersion].modules
+      modules = "bcftools/1.9"
   }
 
   call cobalt as cobaltPrimary {
@@ -140,7 +142,7 @@ workflow wisp {
       normal_bai = normal_bai,
       normal_name = extractNormalName.input_name,
       tumour_name = extractTumorName.input_name,
-      modules = resources[genomeVersion].modules,
+      modules = resources[genomeVersion].hmfModules,
       gcProfile = resources[genomeVersion].gcProfile
   }
 
@@ -152,7 +154,7 @@ workflow wisp {
       cobalt_directory = cobaltPrimary.output_directory,
       somatic_vcf = sage_primary_vcf,
       genomeVersion = genomeVersion,
-      modules = resources[genomeVersion].modules,
+      modules = resources[genomeVersion].hmfModules,
       gcProfile = resources[genomeVersion].gcProfile,
       ensemblDir = resources[genomeVersion].ensemblDir,
       refFasta = resources[genomeVersion].refFasta
@@ -171,7 +173,7 @@ workflow wisp {
         output_prefix = extractTumorName.input_name + "." + chr_label_plasma,
         PON = splitPonByChromosome.chr_pon[idx],
         genomeVersion = genomeVersion,
-        modules = resources[genomeVersion].modules,
+        modules = resources[genomeVersion].hmfModules,
         threads = 2,  # Reduced since single chr
         memory = 8,   # Reduced memory
         timeout = 30  # Much shorter
@@ -182,7 +184,7 @@ workflow wisp {
     input:
       chr_zips = amberPlasmaChr.output_directory,  
       tumour_name = extractPlasmaName.input_name,  
-      modules = resources[genomeVersion].modules
+      modules = "bcftools/1.9"
   }
 
   call cobalt as cobaltPlasma {
@@ -193,7 +195,7 @@ workflow wisp {
       normal_bai = normal_bai,
       normal_name = extractNormalName.input_name,
       tumour_name = extractPlasmaName.input_name,
-      modules = resources[genomeVersion].modules,
+      modules = resources[genomeVersion].hmfModules,
       gcProfile = resources[genomeVersion].gcProfile
   }
 
@@ -221,7 +223,7 @@ workflow wisp {
         refFasta = resources[genomeVersion].refFasta,
         input_vcf = sage_primary_vcf,
         input_vcf_index = sage_primary_vcf_index,
-        modules = resources[genomeVersion].modules,
+        modules = "sage/3.4.4 hg38/p12",
         ensemblDir = resources[genomeVersion].ensemblDir,
         hotspots = resources[genomeVersion].hotspots,
         driverGenePanel = resources[genomeVersion].driverGenePanel,
@@ -258,7 +260,7 @@ workflow wisp {
       bqr_dir = mergePlasmaBqr.merged_bqr_zip,
       refFasta = resources[genomeVersion].refFasta,
       genomeVersion = genomeVersion,
-      modules = resources[genomeVersion].modules
+      modules = resources[genomeVersion].wispModules
   }
 
   meta {
@@ -706,10 +708,10 @@ task sage {
     set -euo pipefail
 
     mkdir -p ~{reference_name}.sage.bqr
+    echo $SAGE_ROOT
+    ls -la ${SAGE_ROOT}/
 
-    sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
-
-    java -Xmx~{heapRam}G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
+    java -Xmx~{heapRam}G -cp $SAGE_ROOT/sage.jar com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \

@@ -230,10 +230,12 @@ Output | Type | Description | Labels
 `sage_plasma_vcf_index`|File|Index for SAGE plasma VCF|
 `sage_plasma_bqr`|File|Zipped SAGE BQR results directory for plasma|
 
+
 ## Commands
 This section lists command(s) run by WISP workflow
 
-* Running WISP  
+* Running WISP
+
 
 ```
     set -euo pipefail
@@ -350,10 +352,10 @@ This section lists command(s) run by WISP workflow
     set -euo pipefail
 
     mkdir -p ~{reference_name}.sage.bqr
+    echo $SAGE_ROOT
+    ls -la ${SAGE_ROOT}/
 
-    sage_jar="/.mounts/labs/gsiprojects/gsi/gsiusers/gpeng/dev/sage/sage_v3.4.4.jar"
-
-    java -Xmx~{heapRam}G -cp ${sage_jar} com.hartwig.hmftools.sage.append.SageAppendApplication \
+    java -Xmx~{heapRam}G -cp $SAGE_ROOT/sage.jar com.hartwig.hmftools.sage.append.SageAppendApplication \
       -reference ~{reference_name} \
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
@@ -469,7 +471,7 @@ This section lists command(s) run by WISP workflow
 
 ```
 
-## Support
+ ## Support
 
 For support, please file an issue on the [Github project](https://github.com/oicr-gsi) or send an email to gsi@oicr.on.ca .
 

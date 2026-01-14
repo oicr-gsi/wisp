@@ -246,6 +246,15 @@ workflow wisp {
       sample_name = extractPlasmaName.input_name
   }
 
+  call annotatePlasmaVcfWithPurple {
+    input:
+      purple_vcf = purple.purple_somatic_vcf,
+      purple_vcf_index = purple.purple_somatic_vcf_index,
+      plasma_sage_vcf = mergePlasmaVcfs.merged_vcf,
+      plasma_sage_vcf_index = mergePlasmaVcfs.merged_vcf_index
+  }
+
+
   call runWisp {
     input:
       donor = donor,  
@@ -254,8 +263,8 @@ workflow wisp {
       purple_dir = purple.purple_directory,
       amber_dir = mergeAmber.output_zip,
       cobalt_dir = mergeCobalt.output_zip,
-      somatic_vcf = mergePlasmaVcfs.merged_vcf,
-      somatic_vcf_index = mergePlasmaVcfs.merged_vcf_index,
+      somatic_vcf = annotatePlasmaVcfWithPurple.annotated_vcf,
+      somatic_vcf_index = annotatePlasmaVcfWithPurple.annotated_vcf_index,
       bqr_dir = mergePlasmaBqr.merged_bqr_zip,
       refFasta = resources[genomeVersion].refFasta,
       genomeVersion = genomeVersion,
@@ -1039,6 +1048,8 @@ task purple {
     File purple_segments = "~{outfilePrefix}.purple/~{tumour_name}.purple.segment.tsv"
     File purple_cnv = "~{outfilePrefix}.purple/~{tumour_name}.purple.cnv.somatic.tsv"
     File purple_cnv_gene = "~{outfilePrefix}.purple/~{tumour_name}.purple.cnv.gene.tsv"
+    File purple_somatic_vcf = "~{outfilePrefix}.purple/~{tumour_name}.purple.somatic.vcf.gz"
+    File purple_somatic_vcf_index = "~{outfilePrefix}.purple/~{tumour_name}.purple.somatic.vcf.gz.tbi"
   }
 
   meta {
@@ -1051,5 +1062,43 @@ task purple {
       purple_cnv: "Somatic copy number variants from PURPLE",
       purple_cnv_gene: "Gene-level copy number variants from PURPLE"
     }
+  }
+}
+
+
+task annotatePlasmaVcfWithPurple {
+  input {
+    File purple_vcf
+    File purple_vcf_index
+    File plasma_sage_vcf
+    File plasma_sage_vcf_index
+    String modules = "bcftools/1.9"
+  }
+  parameter_meta {
+    purple_vcf: "VCF from PURPLE containing copy number and purity annotations"
+    purple_vcf_index: "Index for PURPLE VCF"
+    plasma_sage_vcf: "SAGE VCF with plasma sample appended"
+    plasma_sage_vcf_index: "Index for plasma SAGE VCF"
+    modules: "Required environment modules"
+  }
+
+  command <<<
+    # Extract Purple INFO annotations and merge into plasma VCF
+    bcftools annotate \
+      -a ~{purple_vcf} \
+      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
+      ~{plasma_sage_vcf} \
+      -Oz -o annotated_plasma.vcf.gz
+    
+    tabix -p vcf annotated_plasma.vcf.gz
+  >>>
+
+   runtime {
+    modules: "~{modules}"
+  }
+  
+  output {
+    File annotated_vcf = "annotated_plasma.vcf.gz"
+    File annotated_vcf_index = "annotated_plasma.vcf.gz.tbi"
   }
 }

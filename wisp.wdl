@@ -104,7 +104,6 @@ workflow wisp {
         modules = "bcftools/1.9 sage-data/1.0"
     }
   }
-
   
   scatter (idx in range(length(chromosomes))) {
     String chr_label = sub(chromosomes[idx], ",", "_")
@@ -246,6 +245,21 @@ workflow wisp {
       sample_name = extractPlasmaName.input_name
   }
 
+  call annotatePrimaryVcfWithPurple {
+    input:
+      purple_vcf = purple.purple_somatic_vcf,
+      purple_vcf_index = purple.purple_somatic_vcf_index,
+      plasma_sage_vcf = sage_primary_vcf,
+      plasma_sage_vcf_index = sage_primary_vcf_index
+  }
+
+  call generateProbeVariants {
+    input:
+      annotated_vcf = annotatePrimaryVcfWithPurple.annotated_vcf,
+      annotated_vcf_index = annotatePrimaryVcfWithPurple.annotated_vcf_index,
+      tumor_id = extractTumorName.input_name,
+  }
+
   call annotatePlasmaVcfWithPurple {
     input:
       purple_vcf = purple.purple_somatic_vcf,
@@ -267,6 +281,7 @@ workflow wisp {
       somatic_vcf_index = annotatePlasmaVcfWithPurple.annotated_vcf_index,
       bqr_dir = mergePlasmaBqr.merged_bqr_zip,
       refFasta = resources[genomeVersion].refFasta,
+      probe_variants_file = generateProbeVariants.probe_variants,
       genomeVersion = genomeVersion,
       modules = resources[genomeVersion].wispModules
   }
@@ -828,16 +843,35 @@ task mergeBqrDirs {
 
   command <<<
     set -euo pipefail
-    
+  
     mkdir -p ~{sample_name}.sage.bqr
     
-    # Unzip all BQR files into the same directory
+    # Unzip each BQR file to a unique directory
+    i=0
     for bqr_zip in ~{sep=' ' bqr_zips}; do
-      unzip -o "$bqr_zip" -d temp_bqr/
+      mkdir -p temp_bqr/chr_$i
+      unzip -o "$bqr_zip" -d temp_bqr/chr_$i/
+      i=$((i + 1))
     done
     
-    # Move all .tsv files to final directory
-    find temp_bqr -name "*.sage.bqr.tsv" -exec mv {} ~{sample_name}.sage.bqr/ \;
+    # Find all BQR TSV files
+    bqr_files=($(find temp_bqr -name "*.sage.bqr.tsv" | sort))
+    
+    if [ ${#bqr_files[@]} -eq 0 ]; then
+      echo "No BQR files found!"
+      exit 1
+    fi
+    
+    echo "Found ${#bqr_files[@]} BQR files to merge"
+    
+    # Merge: take header from first file, then all data rows from all files
+    cat "${bqr_files[0]}" > ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
+    
+    for bqr_file in "${bqr_files[@]:1}"; do
+      tail -n +2 "$bqr_file" >> ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
+    done
+    
+    echo "Merged $(wc -l < ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv) lines total"
     
     # Zip the merged directory
     zip -r ~{sample_name}.sage.bqr.zip ~{sample_name}.sage.bqr/
@@ -864,6 +898,7 @@ task runWisp {
     File? somatic_vcf
     File? somatic_vcf_index
     File bqr_dir
+    File? probe_variants_file
     String refFasta
     String genomeVersion
     String modules
@@ -918,6 +953,7 @@ task runWisp {
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
+      -probe_variants_file ~{probe_variants_file} \
       -threads ~{threads} \
       ~{additionalParameters}
 
@@ -1065,6 +1101,92 @@ task purple {
   }
 }
 
+
+task annotatePrimaryVcfWithPurple {
+  input {
+    File purple_vcf
+    File purple_vcf_index
+    File plasma_sage_vcf
+    File plasma_sage_vcf_index
+    String modules = "bcftools/1.9"
+  }
+  parameter_meta {
+    purple_vcf: "VCF from PURPLE containing copy number and purity annotations"
+    purple_vcf_index: "Index for PURPLE VCF"
+    plasma_sage_vcf: "SAGE VCF with plasma sample appended"
+    plasma_sage_vcf_index: "Index for plasma SAGE VCF"
+    modules: "Required environment modules"
+  }
+
+  command <<<
+    # Extract Purple INFO annotations and merge into plasma VCF
+    bcftools annotate \
+      -a ~{purple_vcf} \
+      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
+      ~{plasma_sage_vcf} \
+      -Oz -o annotated_plasma.vcf.gz
+    
+    tabix -p vcf annotated_plasma.vcf.gz
+  >>>
+
+   runtime {
+    modules: "~{modules}"
+  }
+  
+  output {
+    File annotated_vcf = "annotated_plasma.vcf.gz"
+    File annotated_vcf_index = "annotated_plasma.vcf.gz.tbi"
+  }
+}
+
+task generateProbeVariants {
+  input {
+    File annotated_vcf
+    File annotated_vcf_index
+    String tumor_id
+    String outputFileName = "probe_variants.csv"
+    Int jobMemory = 4
+    Int timeout = 1
+  }
+  parameter_meta {
+    annotated_vcf: "VCF file with PURPLE annotations"
+    annotated_vcf_index: "Index for annotated VCF"
+    tumor_id: "Tumor sample identifier"
+    outputFileName: "Output CSV filename for probe variants"
+    jobMemory: "Memory allocated for this job (GB)"
+    timeout: "Hours before task timeout"
+  }
+  
+  command <<<
+    set -euo pipefail
+    
+    # Generate probe variants CSV from PASS + HIGH_CONFIDENCE variants
+    zcat ~{annotated_vcf} | \
+      grep -v "^#" | \
+      awk 'BEGIN{print "TumorId,Category,Variant"}
+           $7=="PASS" && $8~"TIER=HIGH_CONFIDENCE" {
+             printf "~{tumor_id},REPORTABLE_MUTATION,%s:%s %s>%s\n", $1, $2, $4, $5
+           }' > ~{outputFileName}
+    
+    # Verify file has content
+    line_count=$(wc -l < ~{outputFileName})
+    if [ "$line_count" -le 1 ]; then
+      echo "ERROR: No PASS + HIGH_CONFIDENCE variants found for probe file"
+      exit 1
+    fi
+    
+    echo "Generated probe variants file with $((line_count - 1)) variants"
+  >>>
+  
+  output {
+    File probe_variants = outputFileName
+  }
+  
+  runtime {
+    jobMemory:  "~{jobMemory} GB"
+    timeout: "~{timeout}"
+  }
+}
 
 task annotatePlasmaVcfWithPurple {
   input {

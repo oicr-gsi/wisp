@@ -28,7 +28,7 @@ workflow wisp {
     File plasma_bam
     File plasma_bai
     String donor
-    String genomeVersion = "38"
+    String genomeVersion = "hg38"
     File sage_primary_vcf
     File sage_primary_vcf_index
     Array[String] chromosomes = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22,chrX,chrY"]
@@ -49,7 +49,7 @@ workflow wisp {
   }
 
   Map[String,GenomeResources] resources = {
-    "38": {
+    "hg38": {
       "wispModules": "wisp/v1.2-beta.3 hg38/p12",
       "hmfModules": "hmftools/1.1 hg38/p12 hmftools-data/53138",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
@@ -467,13 +467,14 @@ task amber {
     set -euo pipefail
 
     mkdir ~{file_prefix}.amber
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
 
     java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
-      -ref_genome_version ~{genomeVersion} \
+      -ref_genome_version ${genome_version} \
       -min_mapping_quality ~{min_mapping_quality} \
       -min_base_quality ~{min_base_quality} \
       ~{additionalParameters}
@@ -1045,9 +1046,10 @@ task purple {
     unzip ~{amber_directory}
     unzip ~{cobalt_directory}
     mkdir ~{outfilePrefix}.purple
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
 
     java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
-      -ref_genome_version ~{genomeVersion} \
+      -ref_genome_version ${genome_version} \
       -ref_genome ~{refFasta}  \
       -gc_profile ~{gcProfile} \
       -ensembl_data_dir ~{ensemblDir}  \

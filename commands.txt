@@ -1,8 +1,7 @@
 ## Commands
-This section lists command(s) run by WISP workflow
+This section lists command(s) run by wisp workflow
 
-* Running WISP
-
+* Running wisp
 
 ```
     set -euo pipefail
@@ -163,16 +162,35 @@ This section lists command(s) run by WISP workflow
 ```
 ```
     set -euo pipefail
-    
+  
     mkdir -p ~{sample_name}.sage.bqr
     
-    # Unzip all BQR files into the same directory
+    # Unzip each BQR file to a unique directory
+    i=0
     for bqr_zip in ~{sep=' ' bqr_zips}; do
-      unzip -o "$bqr_zip" -d temp_bqr/
+      mkdir -p temp_bqr/chr_$i
+      unzip -o "$bqr_zip" -d temp_bqr/chr_$i/
+      i=$((i + 1))
     done
     
-    # Move all .tsv files to final directory
-    find temp_bqr -name "*.sage.bqr.tsv" -exec mv {} ~{sample_name}.sage.bqr/ \;
+    # Find all BQR TSV files
+    bqr_files=($(find temp_bqr -name "*.sage.bqr.tsv" | sort))
+    
+    if [ ${#bqr_files[@]} -eq 0 ]; then
+      echo "No BQR files found!"
+      exit 1
+    fi
+    
+    echo "Found ${#bqr_files[@]} BQR files to merge"
+    
+    # Merge: take header from first file, then all data rows from all files
+    cat "${bqr_files[0]}" > ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
+    
+    for bqr_file in "${bqr_files[@]:1}"; do
+      tail -n +2 "$bqr_file" >> ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
+    done
+    
+    echo "Merged $(wc -l < ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv) lines total"
     
     # Zip the merged directory
     zip -r ~{sample_name}.sage.bqr.zip ~{sample_name}.sage.bqr/
@@ -201,6 +219,7 @@ This section lists command(s) run by WISP workflow
       -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
+      -probe_variants_file ~{probe_variants_file} \
       -threads ~{threads} \
       ~{additionalParameters}
 
@@ -236,4 +255,44 @@ This section lists command(s) run by WISP workflow
 
     zip -r ~{outfilePrefix}.purple.zip ~{outfilePrefix}.purple/
 
+```
+```
+    # Extract Purple INFO annotations and merge into plasma VCF
+    bcftools annotate \
+      -a ~{purple_vcf} \
+      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
+      ~{plasma_sage_vcf} \
+      -Oz -o annotated_plasma.vcf.gz
+    
+    tabix -p vcf annotated_plasma.vcf.gz
+```
+```
+    set -euo pipefail
+    
+    # Generate probe variants CSV from PASS + HIGH_CONFIDENCE variants
+    zcat ~{annotated_vcf} | \
+      grep -v "^#" | \
+      awk 'BEGIN{print "TumorId,Category,Variant"}
+           $7=="PASS" && $8~"TIER=HIGH_CONFIDENCE" {
+             printf "~{tumor_id},REPORTABLE_MUTATION,%s:%s %s>%s\n", $1, $2, $4, $5
+           }' > ~{outputFileName}
+    
+    # Verify file has content
+    line_count=$(wc -l < ~{outputFileName})
+    if [ "$line_count" -le 1 ]; then
+      echo "ERROR: No PASS + HIGH_CONFIDENCE variants found for probe file"
+      exit 1
+    fi
+    
+    echo "Generated probe variants file with $((line_count - 1)) variants"
+```
+```
+    # Extract Purple INFO annotations and merge into plasma VCF
+    bcftools annotate \
+      -a ~{purple_vcf} \
+      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
+      ~{plasma_sage_vcf} \
+      -Oz -o annotated_plasma.vcf.gz
+    
+    tabix -p vcf annotated_plasma.vcf.gz
 ```

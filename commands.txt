@@ -286,13 +286,4 @@ This section lists command(s) run by wisp workflow
     
     echo "Generated probe variants file with $((line_count - 1)) variants"
 ```
-```
-    # Extract Purple INFO annotations and merge into plasma VCF
-    bcftools annotate \
-      -a ~{purple_vcf} \
-      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
-      ~{plasma_sage_vcf} \
-      -Oz -o annotated_plasma.vcf.gz
-    
-    tabix -p vcf annotated_plasma.vcf.gz
-```
+

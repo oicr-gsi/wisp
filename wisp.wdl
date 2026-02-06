@@ -50,7 +50,7 @@ workflow wisp {
 
   Map[String,GenomeResources] resources = {
     "hg38": {
-      "wispModules": "wisp/v1.2-beta.3 hg38/p12",
+      "wispModules": "wisp/v1.2 hg38/p12",
       "hmfModules": "hmftools/1.1 hg38/p12 hmftools-data/53138",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
       "refFasta": "$HG38_ROOT/hg38_random.fa",
@@ -201,27 +201,27 @@ workflow wisp {
     input:
       primary_zip = amberPrimary.output_directory,
       plasma_zip = amberPlasma.output_directory,
-      output_name = "merged_amber"
+      output_name = extractTumorName.input_name + ".amber"
   }
 
   call mergeDirs as mergeCobalt {
     input:
       primary_zip = cobaltPrimary.output_directory,
       plasma_zip = cobaltPlasma.output_directory,
-      output_name = "merged_cobalt"
+      output_name = extractTumorName.input_name + ".cobalt"
   }
 
   scatter (chr in chromosomes) {
-    call sage {
+    call sage_append{
       input:
         chromosome = chr,
         reference_name = extractPlasmaName.input_name,
         reference_bam = plasma_bam,
         reference_bai = plasma_bai,
         refFasta = resources[genomeVersion].refFasta,
-        input_vcf = sage_primary_vcf,
-        input_vcf_index = sage_primary_vcf_index,
-        modules = "sage/3.4.4 hg38/p12",
+        input_vcf = purple.purple_somatic_vcf,
+        input_vcf_index = purple.purple_somatic_vcf_index,
+        modules = "sage/4.2 hg38/p12",
         ensemblDir = resources[genomeVersion].ensemblDir,
         hotspots = resources[genomeVersion].hotspots,
         driverGenePanel = resources[genomeVersion].driverGenePanel,
@@ -229,20 +229,12 @@ workflow wisp {
     }
   }
 
-  # Merge plasma chromosome VCFs
-  call mergeVcfs as mergePlasmaVcfs {
+  call mergeVcfs as mergeSagePlasmaVcfs {
     input:
-      vcfs = sage.output_vcf,
-      vcf_indices = sage.output_vcf_index,
+      vcfs = sage_append.output_vcf,
+      vcf_indices = sage_append.output_vcf_index,
       sample_name = extractPlasmaName.input_name,
       modules = "bcftools/1.9"
-  }
-
-  # Merge plasma BQR directories
-  call mergeBqrDirs as mergePlasmaBqr {
-    input:
-      bqr_zips = sage.output_bqr_directory,
-      sample_name = extractPlasmaName.input_name
   }
 
   call annotateVcfWithPurple as annotatePrimaryVcfWithPurple {
@@ -260,26 +252,16 @@ workflow wisp {
       tumor_id = extractTumorName.input_name,
   }
 
-  call annotateVcfWithPurple as annotatePlasmaVcfWithPurple {
-    input:
-      purple_vcf = purple.purple_somatic_vcf,
-      purple_vcf_index = purple.purple_somatic_vcf_index,
-      sage_vcf = mergePlasmaVcfs.merged_vcf,
-      sage_vcf_index = mergePlasmaVcfs.merged_vcf_index
-  }
-
-
   call runWisp {
     input:
-      donor = donor,  
+      donor = donor,
       tumour_name = extractTumorName.input_name,
       plasma_name = extractPlasmaName.input_name,
       purple_dir = purple.purple_directory,
       amber_dir = mergeAmber.output_zip,
       cobalt_dir = mergeCobalt.output_zip,
-      somatic_vcf = annotatePlasmaVcfWithPurple.annotated_vcf,
-      somatic_vcf_index = annotatePlasmaVcfWithPurple.annotated_vcf_index,
-      bqr_dir = mergePlasmaBqr.merged_bqr_zip,
+      somatic_vcf = mergeSagePlasmaVcfs.merged_vcf,
+      somatic_vcf_index = mergeSagePlasmaVcfs.merged_vcf_index,
       refFasta = resources[genomeVersion].refFasta,
       probe_variants_file = generateProbeVariants.probe_variants,
       genomeVersion = genomeVersion,
@@ -289,7 +271,7 @@ workflow wisp {
   meta {
     author: "Gavin Peng"
     email: "gpeng@oicr.on.ca"
-    description: "WISP tumor fraction estimation with chromosome-split SAGE plasma append"
+    description: "WISP tumor fraction estimation with chromosome-split SAGE plasma append and -skip_bqr option"
     dependencies: [
         {
             name: "PURPLE",
@@ -315,20 +297,18 @@ workflow wisp {
     output_meta: {
       wisp_directory: "Zipped WISP output directory",
       wisp_summary: "WISP tumor fraction summary",
-      wisp_snv_results: "Per-variant SNV results",
+      wisp_somatic_variants: "Per-variant SNV results",
       sage_plasma_vcf: "SAGE VCF with plasma sample appended",
-      sage_plasma_vcf_index: "Index for SAGE plasma VCF",
-      sage_plasma_bqr: "Zipped SAGE BQR results directory for plasma"
+      sage_plasma_vcf_index: "Index for SAGE plasma VCF"
     }
   }
 
   output {
     File wisp_directory = runWisp.wisp_directory
     File wisp_summary = runWisp.wisp_summary
-    File? wisp_snv_results = runWisp.wisp_snv_results
-    File sage_plasma_vcf = mergePlasmaVcfs.merged_vcf
-    File sage_plasma_vcf_index = mergePlasmaVcfs.merged_vcf_index
-    File sage_plasma_bqr = mergePlasmaBqr.merged_bqr_zip
+    File wisp_somatic_variants = runWisp.wisp_somatic_variants
+    File sage_plasma_vcf = mergeSagePlasmaVcfs.merged_vcf
+    File sage_plasma_vcf_index = mergeSagePlasmaVcfs.merged_vcf_index
   }
 }
 
@@ -679,7 +659,7 @@ task mergeDirs {
   }
 }
 
-task sage {
+task sage_append {
   input {
     String chromosome
     String reference_name
@@ -706,9 +686,9 @@ task sage {
 
   parameter_meta {
     chromosome: "Chromosome to process"
-    reference_name: "Name for cfDNA sample"
-    reference_bam: "cfDNA bam"
-    reference_bai: "Matching bai for cfDNA bam"
+    reference_name: "Name for cfDNA/plasma sample to append"
+    reference_bam: "cfDNA/plasma bam"
+    reference_bai: "Matching bai for cfDNA/plasma bam"
     refFasta: "Reference genome fasta"
     ensemblDir: "Ensembl data directory"
     hotspots: "Known hotspots VCF"
@@ -731,7 +711,6 @@ task sage {
   command <<<
     set -euo pipefail
 
-    mkdir -p ~{reference_name}.sage.bqr
     echo $SAGE_ROOT
     ls -la ${SAGE_ROOT}/
 
@@ -748,10 +727,8 @@ task sage {
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
       -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
+      -skip_msi_jitter \
       ~{additionalParameters}
-
-    mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
-    zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
 
   >>>
 
@@ -763,14 +740,12 @@ task sage {
   }
 
   output {
-    File output_bqr_directory = "~{reference_name}.~{chromosome}.sage.bqr.zip"
     File output_vcf = "~{reference_name}.~{chromosome}.sage.vcf.gz"
     File output_vcf_index = "~{reference_name}.~{chromosome}.sage.vcf.gz.tbi"
   }
 
   meta {
     output_meta: {
-      output_bqr_directory: "Zipped SAGE BQR results directory",
       output_vcf: "SAGE output VCF",
       output_vcf_index: "SAGE output VCF index"
     }
@@ -894,11 +869,10 @@ task runWisp {
     String tumour_name
     String plasma_name
     File? purple_dir
-    File amber_dir  
+    File amber_dir
     File cobalt_dir
     File? somatic_vcf
     File? somatic_vcf_index
-    File bqr_dir
     File? probe_variants_file
     String refFasta
     String genomeVersion
@@ -919,7 +893,6 @@ task runWisp {
     cobalt_dir: "Zipped merged COBALT directory"
     somatic_vcf: "SAGE VCF with plasma sample appended"
     somatic_vcf_index: "Index for somatic VCF"
-    bqr_dir: "Zipped SAGE BQR directory from plasma"
     refFasta: "Reference genome fasta"
     genomeVersion: "Genome version (37 or 38)"
     additionalParameters: "Additional parameters to pass to WISP"
@@ -937,29 +910,31 @@ task runWisp {
     unzip ~{purple_dir}
     unzip ~{amber_dir}
     unzip ~{cobalt_dir}
-    unzip ~{bqr_dir}
 
     # Create output directory
     mkdir -p ~{plasma_name}.wisp
 
-    # Run WISP
+    # Run WISP with skip_bqr
     java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
       -patient_id ~{donor} \
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
       -purple_dir ~{tumour_name}.solPrimary.purple/ \
-      -amber_dir merged_amber/ \
-      -cobalt_dir merged_cobalt/ \
+      -amber_dir ~{tumour_name}.amber/ \
+      -cobalt_dir ~{tumour_name}.cobalt/ \
       -somatic_vcf ~{somatic_vcf} \
-      -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
       -probe_variants_file ~{probe_variants_file} \
       -threads ~{threads} \
+      -skip_bqr \
+      -write_types ALL \
       ~{additionalParameters}
 
     # Zip output
     zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
+    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.summary.tsv ~{plasma_name}.wisp.summary.tsv 
+    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.somatic_variants.tsv ~{plasma_name}.wisp.somatic_variants.tsv
 
   >>>
 
@@ -972,15 +947,15 @@ task runWisp {
 
   output {
     File wisp_directory = "~{plasma_name}.wisp.zip"
-    File wisp_summary = "~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.summary.tsv"
-    File? wisp_snv_results = "~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.snv.tsv"  # Optional - may not exist
+    File wisp_summary = "~{plasma_name}.wisp.summary.tsv"
+    File wisp_somatic_variants = "~{plasma_name}.wisp.somatic_variants.tsv" 
   }
 
   meta {
     output_meta: {
       wisp_directory: "Zipped WISP output directory",
       wisp_summary: "WISP tumor fraction summary",
-      wisp_snv_results: "Per-variant SNV results"
+      wisp_somatic_variants: "Per-variant SNV results"
     }
   }
 }

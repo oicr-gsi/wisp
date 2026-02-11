@@ -1,6 +1,6 @@
 # wisp
 
-WISP tumor fraction estimation with chromosome-split SAGE plasma append and -skip_bqr option
+The WISP (Whole-genome Inference of Somatic Plasma) workflow estimates circulating tumor DNA (ctDNA) fraction in plasma samples by leveraging somatic variants and copy number profiles derived from matched primary tumor sequencing data.
 
 ## Overview
 ```mermaid

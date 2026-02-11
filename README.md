@@ -3,7 +3,91 @@
 WISP tumor fraction estimation with chromosome-split SAGE plasma append and -skip_bqr option
 
 ## Overview
+```mermaid
+flowchart TD
+    subgraph inputs [Inputs]
+        tumor_bam[Tumor BAM]
+        normal_bam[Normal BAM]
+        plasma_bam[Plasma cfDNA BAM]
+    end
+    subgraph step1 [Step 1: Sample Name Extraction]
+        extractTumor[extractTumorName]
+        extractNormal[extractNormalName]
+        extractPlasma[extractPlasmaName]
+    end
+    subgraph step2 [Step 2: Primary Tumor Analysis]
+        amberPrimary[amberPrimary]
+        cobaltPrimary[cobaltPrimary]
+        sagePrimary[sagePrimary]
+    end
+    subgraph step3 [Step 3: Purity and Ploidy Fitting]
+        purple[Purple]
+    end
+    subgraph step4 [Step 4: Plasma Analysis]
+        amberPlasma[amberPlasma]
+        cobaltPlasma[cobaltPlasma]
+    end
+    subgraph step5 [Step 5: Merge Directories]
+        mergeAmber[mergeAmber]
+        mergeCobalt[mergeCobalt]
+    end
+    subgraph step6 [Step 6: Force-call Plasma]
+        sagePlasma[sagePlasma append mode]
+    end
+    subgraph step7 [Step 7: Tumor Fraction Estimation]
+        runWisp[runWisp]
+    end
+    subgraph outputs [Outputs]
+        summary[wisp.summary.tsv]
+        snv_results[wisp.snv.tsv]
+    end
+    tumor_bam --> extractTumor
+    normal_bam --> extractNormal
+    plasma_bam --> extractPlasma
+    tumor_bam --> amberPrimary
+    tumor_bam --> cobaltPrimary
+    tumor_bam --> sagePrimary
+    normal_bam --> amberPrimary
+    normal_bam --> cobaltPrimary
+    normal_bam --> sagePrimary
+    plasma_bam --> amberPlasma
+    plasma_bam --> cobaltPlasma
+    plasma_bam --> sagePlasma
+    normal_bam --> amberPlasma
+    normal_bam --> cobaltPlasma
+    amberPrimary --> purple
+    cobaltPrimary --> purple
+    sagePrimary --> purple
+    amberPrimary --> mergeAmber
+    amberPlasma --> mergeAmber
+    cobaltPrimary --> mergeCobalt
+    cobaltPlasma --> mergeCobalt
+    sagePrimary --> sagePlasma
+    purple --> runWisp
+    mergeAmber --> runWisp
+    mergeCobalt --> runWisp
+    sagePlasma --> runWisp
+    runWisp --> summary
+    runWisp --> snv_results
+```
+### Inputs
+The workflow requires three inputs: a primary tumor sample, a matched normal sample (for germline filtering), and a plasma/cfDNA sample from the same patient. By first characterizing the somatic landscape of the primary tumor, the workflow can then quantify the fraction of cell-free DNA in plasma that originates from tumor cells.
+### Workflow Description
+* The pipeline proceeds through seven major steps:
+* Sample Preparation: 
+Sample names are extracted from BAM headers using GATK GetSampleName to ensure consistent naming across all downstream tools.
+* Primary Tumor Characterization: 
+Three tools run in parallel on the tumor-normal pair. AMBER calculates B-allele frequencies at known heterozygous germline SNP positions. COBALT measures read depth ratios across the genome for copy number analysis. SAGE performs somatic variant calling to identify SNVs and small indels present in the tumor.
+* Purity and Ploidy Estimation: Purple integrates AMBER, COBALT, and SAGE outputs to estimate tumor purity, overall ploidy, and genome-wide copy number segments. This establishes the reference somatic profile for the primary tumor.
+* Plasma Sample Processing: AMBER and COBALT are run on the plasma sample against the same matched normal, generating allele frequency and read depth data from the cfDNA.
+Data Integration: AMBER and COBALT outputs from both primary and plasma analyses are merged into unified directories, as WISP requires data from both samples for comparison.
+* Variant Force-Calling: SAGE runs in append mode on the plasma sample, force-calling read evidence at variant positions identified in the primary tumor rather than performing de novo variant discovery. This produces a VCF containing read counts from all three samples (normal, tumor, and plasma) at each somatic variant position.
+* Tumor Fraction Estimation: WISP integrates all upstream outputs to estimate the ctDNA fraction. It examines variant allele frequencies in the plasma at known somatic variant sites and compares observed signals against expected values based on the primary tumor's copy number profile and variant characteristics.
+### Outputs
+The workflow produces a summary file containing the estimated tumor fraction and per-variant results detailing the evidence at each somatic position used in the estimation.
 
+### Requirements
+The workflow requires whole-genome sequencing data with sufficient coverage across the genome. Chromosome-subset or targeted panel data will not produce valid copy number estimates required for tumor fraction calculation.
 ## Dependencies
 
 * [PURPLE](https://github.com/hartwigmedical/hmftools/blob/master/purple/README.md)

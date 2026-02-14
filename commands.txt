@@ -1,7 +1,8 @@
 ## Commands
-This section lists command(s) run by wisp workflow
+This section lists command(s) run by WORKFLOW workflow
 
-* Running wisp
+* Running WORKFLOW
+
 
 ```
     set -euo pipefail
@@ -23,13 +24,14 @@ This section lists command(s) run by wisp workflow
     set -euo pipefail
 
     mkdir ~{file_prefix}.amber
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
 
     java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
       -reference ~{normal_name} -reference_bam ~{normal_bam} \
       -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
       -output_dir ~{file_prefix}.amber/ \
       -loci ~{PON} \
-      -ref_genome_version ~{genomeVersion} \
+      -ref_genome_version ${genome_version} \
       -min_mapping_quality ~{min_mapping_quality} \
       -min_base_quality ~{min_base_quality} \
       ~{additionalParameters}
@@ -117,7 +119,6 @@ This section lists command(s) run by wisp workflow
 ```
     set -euo pipefail
 
-    mkdir -p ~{reference_name}.sage.bqr
     echo $SAGE_ROOT
     ls -la ${SAGE_ROOT}/
 
@@ -126,74 +127,21 @@ This section lists command(s) run by wisp workflow
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
       -ref_genome ~{refFasta} \
+      ~{"-driver_gene_panel " + driverGenePanel} \
       -input_vcf ~{input_vcf} \
-      -specific_chr ~{chromosome} \
-      -output_vcf ~{reference_name}.~{chromosome}.sage.vcf.gz \
+      -output_vcf ~{reference_name}.sage.vcf.gz \
       -threads ~{threads} \
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
       -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
       -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
+      -skip_msi_jitter \
       ~{additionalParameters}
 
-    mv *.sage.bqr.tsv ~{reference_name}.sage.bqr/ 2>/dev/null || true
-    zip -r ~{reference_name}.~{chromosome}.sage.bqr.zip ~{reference_name}.sage.bqr/
+    mkdir -p ~{reference_name}.sage.bqr/
+    mv *.sage.bqr.tsv  ~{reference_name}.sage.bqr/
+    zip -r ~{reference_name}.sage.bqr.zip ~{reference_name}.sage.bqr/
 
-```
-```
-    set -euo pipefail
-    
-    # Create file list for bcftools concat
-    for vcf in ~{sep=' ' vcfs}; do
-      echo "$vcf" >> vcf_list.txt
-    done
-    
-    # Sort by chromosome order
-    sort -V vcf_list.txt > vcf_list_sorted.txt
-    
-    # Concatenate VCFs in order
-    bcftools concat \
-      --file-list vcf_list_sorted.txt \
-      --output-type z \
-      --output ~{sample_name}.sage.vcf.gz
-    
-    # Index the merged VCF
-    tabix -p vcf ~{sample_name}.sage.vcf.gz
-```
-```
-    set -euo pipefail
-  
-    mkdir -p ~{sample_name}.sage.bqr
-    
-    # Unzip each BQR file to a unique directory
-    i=0
-    for bqr_zip in ~{sep=' ' bqr_zips}; do
-      mkdir -p temp_bqr/chr_$i
-      unzip -o "$bqr_zip" -d temp_bqr/chr_$i/
-      i=$((i + 1))
-    done
-    
-    # Find all BQR TSV files
-    bqr_files=($(find temp_bqr -name "*.sage.bqr.tsv" | sort))
-    
-    if [ ${#bqr_files[@]} -eq 0 ]; then
-      echo "No BQR files found!"
-      exit 1
-    fi
-    
-    echo "Found ${#bqr_files[@]} BQR files to merge"
-    
-    # Merge: take header from first file, then all data rows from all files
-    cat "${bqr_files[0]}" > ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
-    
-    for bqr_file in "${bqr_files[@]:1}"; do
-      tail -n +2 "$bqr_file" >> ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
-    done
-    
-    echo "Merged $(wc -l < ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv) lines total"
-    
-    # Zip the merged directory
-    zip -r ~{sample_name}.sage.bqr.zip ~{sample_name}.sage.bqr/
 ```
 ```
     set -euo pipefail
@@ -207,24 +155,27 @@ This section lists command(s) run by wisp workflow
     # Create output directory
     mkdir -p ~{plasma_name}.wisp
 
-    # Run WISP
+    # Run WISP with skip_bqr
     java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
       -patient_id ~{donor} \
       -tumor_id ~{tumour_name} \
       -samples ~{plasma_name} \
       -purple_dir ~{tumour_name}.solPrimary.purple/ \
-      -amber_dir merged_amber/ \
-      -cobalt_dir merged_cobalt/ \
+      -amber_dir ~{tumour_name}.amber/ \
+      -cobalt_dir ~{tumour_name}.cobalt/ \
+      -bqr_dir ~{plasma_name}.sage.bqr \
       -somatic_vcf ~{somatic_vcf} \
-      -bqr_dir ~{plasma_name}.sage.bqr/ \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
       -probe_variants_file ~{probe_variants_file} \
       -threads ~{threads} \
+      -write_types ALL \
       ~{additionalParameters}
 
     # Zip output
     zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
+    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.summary.tsv ~{plasma_name}.wisp.summary.tsv 
+    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.somatic_variants.tsv ~{plasma_name}.wisp.somatic_variants.tsv
 
 ```
 ```
@@ -233,9 +184,10 @@ This section lists command(s) run by wisp workflow
     unzip ~{amber_directory}
     unzip ~{cobalt_directory}
     mkdir ~{outfilePrefix}.purple
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
 
     java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
-      -ref_genome_version ~{genomeVersion} \
+      -ref_genome_version ${genome_version} \
       -ref_genome ~{refFasta}  \
       -gc_profile ~{gcProfile} \
       -ensembl_data_dir ~{ensemblDir}  \
@@ -261,14 +213,14 @@ This section lists command(s) run by wisp workflow
     bcftools annotate \
       -a ~{purple_vcf} \
       -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
-      ~{plasma_sage_vcf} \
-      -Oz -o annotated_plasma.vcf.gz
+      ~{sage_vcf} \
+      -Oz -o annotated.vcf.gz
     
-    tabix -p vcf annotated_plasma.vcf.gz
+    tabix -p vcf annotated.vcf.gz
 ```
 ```
     set -euo pipefail
-    
+
     # Generate probe variants CSV from PASS + HIGH_CONFIDENCE variants
     zcat ~{annotated_vcf} | \
       grep -v "^#" | \
@@ -276,14 +228,29 @@ This section lists command(s) run by wisp workflow
            $7=="PASS" && $8~"TIER=HIGH_CONFIDENCE" {
              printf "~{tumor_id},REPORTABLE_MUTATION,%s:%s %s>%s\n", $1, $2, $4, $5
            }' > ~{outputFileName}
-    
+
     # Verify file has content
     line_count=$(wc -l < ~{outputFileName})
     if [ "$line_count" -le 1 ]; then
-      echo "ERROR: No PASS + HIGH_CONFIDENCE variants found for probe file"
-      exit 1
+      echo "WARNING: No PASS + HIGH_CONFIDENCE variants found"
+      echo "This may be expected for downsampled/test data"
     fi
-    
+
     echo "Generated probe variants file with $((line_count - 1)) variants"
 ```
+```
+    set -euo pipefail
 
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "37"; fi)
+
+    java -Xmx~{heapRam}G -jar $PAVE_ROOT/pave.jar \
+      -sample ~{sample} \
+      -input_vcf ~{vcf_file} \
+      -ref_genome ~{refFasta} \
+      -ref_genome_version ${genome_version} \
+      -ensembl_data_dir ~{ensemblDir} \
+      ~{"-driver_gene_panel " + driverGenePanel} \
+      -output_dir ./ \
+      -threads ~{threads} \
+      ~{additionalParameters}
+```

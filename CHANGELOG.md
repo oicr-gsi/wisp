@@ -20,3 +20,11 @@ includes AED will field which will be a filter in wisp
 - removed merge bqr task
 - wisp use skip_bqr option, and will provision out somatic_variant_tsv
 separately
+
+## [1.0.5] - 2026-02-12
+### Added
+- Added PAVE task
+
+## Changed
+- SAGE append not run in parallel
+- WISP uses bqr_dor from sage_append

@@ -4,6 +4,7 @@ struct GenomeResources {
     String PON
     String wispModules
     String hmfModules
+    String paveModules
     String gatkModules
     String gcProfile
     String ensemblDir
@@ -52,6 +53,7 @@ workflow wisp {
     "hg38": {
       "wispModules": "wisp/v1.2 hg38/p12",
       "hmfModules": "hmftools/1.1 hg38/p12 hmftools-data/53138",
+      "paveModules": "pave/1.8 hg38/p12 hmftools-data/53138 sage-data/1.0",
       "gatkModules": "hg38-gridss-index/1.0 gatk/4.1.6.0",
       "refFasta": "$HG38_ROOT/hg38_random.fa",
       "refFai": "$HG38_GRIDSS_INDEX_ROOT/hg38_random.fa.fai",
@@ -64,7 +66,7 @@ workflow wisp {
       "repeat_mask_file": "$HMFTOOLS_DATA_ROOT/sv/repeat_mask_data.38.fa.gz",
       "knownfusion": "$HMFTOOLS_DATA_ROOT/sv/known_fusions.38.bedpe",
       "hotspots": "$SAGE_DATA_ROOT/KnownHotspots.hg38.fixed.vcf.gz",
-      "driverGenePanel": "$SAGE_DATA_ROOT/DriverGenePanel.hg38.tsv",
+      "driverGenePanel": "$SAGE_DATA_ROOT/driverGenePanel",
       "highConfBed": "$SAGE_DATA_ROOT/highConfidenceBed"
     }
   }
@@ -144,13 +146,24 @@ workflow wisp {
       gcProfile = resources[genomeVersion].gcProfile
   }
 
+  call pave {
+    input:
+      sample = extractTumorName.input_name,
+      vcf_file = sage_primary_vcf,
+      vcf_file_index = sage_primary_vcf_index,
+      refFasta = resources[genomeVersion].refFasta,
+      ensemblDir = resources[genomeVersion].ensemblDir,
+      genomeVersion = genomeVersion,
+      modules = resources[genomeVersion].paveModules
+  }
+
   call purple {
     input:
       normal_name = extractNormalName.input_name,
       tumour_name = extractTumorName.input_name,
       amber_directory = amberPrimary.output_directory,
       cobalt_directory = cobaltPrimary.output_directory,
-      somatic_vcf = sage_primary_vcf,
+      somatic_vcf = pave.output_vcf,
       genomeVersion = genomeVersion,
       modules = resources[genomeVersion].hmfModules,
       gcProfile = resources[genomeVersion].gcProfile,
@@ -211,10 +224,8 @@ workflow wisp {
       output_name = extractTumorName.input_name + ".cobalt"
   }
 
-  scatter (chr in chromosomes) {
-    call sage_append{
+  call sage_append{
       input:
-        chromosome = chr,
         reference_name = extractPlasmaName.input_name,
         reference_bam = plasma_bam,
         reference_bai = plasma_bai,
@@ -224,17 +235,7 @@ workflow wisp {
         modules = "sage/4.2 hg38/p12",
         ensemblDir = resources[genomeVersion].ensemblDir,
         hotspots = resources[genomeVersion].hotspots,
-        driverGenePanel = resources[genomeVersion].driverGenePanel,
         highConfBed = resources[genomeVersion].highConfBed
-    }
-  }
-
-  call mergeVcfs as mergeSagePlasmaVcfs {
-    input:
-      vcfs = sage_append.output_vcf,
-      vcf_indices = sage_append.output_vcf_index,
-      sample_name = extractPlasmaName.input_name,
-      modules = "bcftools/1.9"
   }
 
   call annotateVcfWithPurple as annotatePrimaryVcfWithPurple {
@@ -260,8 +261,9 @@ workflow wisp {
       purple_dir = purple.purple_directory,
       amber_dir = mergeAmber.output_zip,
       cobalt_dir = mergeCobalt.output_zip,
-      somatic_vcf = mergeSagePlasmaVcfs.merged_vcf,
-      somatic_vcf_index = mergeSagePlasmaVcfs.merged_vcf_index,
+      somatic_vcf = sage_append.output_vcf,
+      somatic_vcf_index = sage_append.output_vcf_index,
+      bqr_dir = sage_append.output_bqr_directory,
       refFasta = resources[genomeVersion].refFasta,
       probe_variants_file = generateProbeVariants.probe_variants,
       genomeVersion = genomeVersion,
@@ -271,7 +273,7 @@ workflow wisp {
   meta {
     author: "Gavin Peng"
     email: "gpeng@oicr.on.ca"
-    description: "WISP tumor fraction estimation with chromosome-split SAGE plasma append and -skip_bqr option"
+    description: "WISP ctDNA tumor fraction estimation workflow. The pipeline proceeds through seven major steps: (1) Primary Tumor Characterization - AMBER calculates B-allele frequencies at known heterozygous germline SNP positions, COBALT measures read depth ratios across the genome for copy number analysis, while a pre-computed SAGE VCF provides somatic variants. (2) Variant Annotation - PAVE annotates the SAGE VCF with gene and transcript coding effects, protein impacts, and other functional annotations. (3) Purity and Ploidy Estimation - PURPLE integrates AMBER, COBALT, and PAVE outputs to estimate tumor purity, overall ploidy, and genome-wide copy number segments, establishing the reference somatic profile. (4) Plasma Sample Processing - AMBER and COBALT run on the plasma sample against the matched normal, generating allele frequency and read depth data from cfDNA. (5) Data Integration - AMBER and COBALT outputs from both primary and plasma analyses are merged into unified directories as required by WISP. (6) Variant Force-Calling - SAGE runs in append mode on the plasma sample, force-calling read evidence at variant positions from the primary tumor. (7) Tumor Fraction Estimation - WISP integrates all outputs to estimate ctDNA fraction by examining variant allele frequencies in plasma at known somatic sites. Requirements: whole-genome sequencing data with sufficient coverage; chromosome-subset or targeted panel data will not produce valid estimates."
     dependencies: [
         {
             name: "PURPLE",
@@ -292,6 +294,10 @@ workflow wisp {
         {
             name: "SAGE",
             url: "https://github.com/hartwigmedical/hmftools/tree/master/sage"
+        },
+        {
+            name: "PAVE",
+            url: "https://github.com/hartwigmedical/hmftools/tree/master/pave"
         }
     ]
     output_meta: {
@@ -307,8 +313,8 @@ workflow wisp {
     File wisp_directory = runWisp.wisp_directory
     File wisp_summary = runWisp.wisp_summary
     File wisp_somatic_variants = runWisp.wisp_somatic_variants
-    File sage_plasma_vcf = mergeSagePlasmaVcfs.merged_vcf
-    File sage_plasma_vcf_index = mergeSagePlasmaVcfs.merged_vcf_index
+    File sage_plasma_vcf = sage_append.output_vcf
+    File sage_plasma_vcf_index = sage_append.output_vcf_index
   }
 }
 
@@ -661,14 +667,13 @@ task mergeDirs {
 
 task sage_append {
   input {
-    String chromosome
     String reference_name
     File reference_bam
     File reference_bai
     String refFasta
     String ensemblDir
     String hotspots
-    String driverGenePanel
+    String? driverGenePanel
     String highConfBed
     File input_vcf
     File input_vcf_index
@@ -685,14 +690,13 @@ task sage_append {
   }
 
   parameter_meta {
-    chromosome: "Chromosome to process"
     reference_name: "Name for cfDNA/plasma sample to append"
     reference_bam: "cfDNA/plasma bam"
     reference_bai: "Matching bai for cfDNA/plasma bam"
     refFasta: "Reference genome fasta"
     ensemblDir: "Ensembl data directory"
     hotspots: "Known hotspots VCF"
-    driverGenePanel: "Driver gene panel TSV"
+    driverGenePanel: "Driver gene panel TSV (optional)"
     highConfBed: "High confidence regions BED"
     input_vcf: "Input VCF from primary SAGE run"
     input_vcf_index: "Index for input VCF"
@@ -719,9 +723,9 @@ task sage_append {
       -reference_bam ~{reference_bam} \
       -ref_genome_version 38 \
       -ref_genome ~{refFasta} \
+      ~{"-driver_gene_panel " + driverGenePanel} \
       -input_vcf ~{input_vcf} \
-      -specific_chr ~{chromosome} \
-      -output_vcf ~{reference_name}.~{chromosome}.sage.vcf.gz \
+      -output_vcf ~{reference_name}.sage.vcf.gz \
       -threads ~{threads} \
       -min_map_quality ~{min_map_quality} \
       -hard_min_tumor_qual ~{hard_min_tumor_qual} \
@@ -729,6 +733,10 @@ task sage_append {
       -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
       -skip_msi_jitter \
       ~{additionalParameters}
+
+    mkdir -p ~{reference_name}.sage.bqr/
+    mv *.sage.bqr.tsv  ~{reference_name}.sage.bqr/
+    zip -r ~{reference_name}.sage.bqr.zip ~{reference_name}.sage.bqr/
 
   >>>
 
@@ -740,8 +748,9 @@ task sage_append {
   }
 
   output {
-    File output_vcf = "~{reference_name}.~{chromosome}.sage.vcf.gz"
-    File output_vcf_index = "~{reference_name}.~{chromosome}.sage.vcf.gz.tbi"
+    File output_vcf = "~{reference_name}.sage.vcf.gz"
+    File output_vcf_index = "~{reference_name}.sage.vcf.gz.tbi"
+    File output_bqr_directory = "~{reference_name}.sage.bqr.zip"
   }
 
   meta {
@@ -749,117 +758,6 @@ task sage_append {
       output_vcf: "SAGE output VCF",
       output_vcf_index: "SAGE output VCF index"
     }
-  }
-}
-
-task mergeVcfs {
-  input {
-    Array[File] vcfs
-    Array[File] vcf_indices
-    String sample_name
-    String modules
-    Int memory = 8
-    Int timeout = 4
-  }
-  parameter_meta {
-    vcfs: "Array of VCF files to merge"
-    vcf_indices: "Array of VCF index files"
-    sample_name: "Sample name for output files"
-    modules: "Required environment modules"
-    memory: "Memory allocated for this job (GB)"
-    timeout: "Hours before task timeout"
-  }
-
-  command <<<
-    set -euo pipefail
-    
-    # Create file list for bcftools concat
-    for vcf in ~{sep=' ' vcfs}; do
-      echo "$vcf" >> vcf_list.txt
-    done
-    
-    # Sort by chromosome order
-    sort -V vcf_list.txt > vcf_list_sorted.txt
-    
-    # Concatenate VCFs in order
-    bcftools concat \
-      --file-list vcf_list_sorted.txt \
-      --output-type z \
-      --output ~{sample_name}.sage.vcf.gz
-    
-    # Index the merged VCF
-    tabix -p vcf ~{sample_name}.sage.vcf.gz
-  >>>
-
-  runtime {
-    memory: "~{memory} GB"
-    modules: "~{modules}"
-    timeout: "~{timeout}"
-  }
-
-  output {
-    File merged_vcf = "~{sample_name}.sage.vcf.gz"
-    File merged_vcf_index = "~{sample_name}.sage.vcf.gz.tbi"
-  }
-}
-
-task mergeBqrDirs {
-  input {
-    Array[File] bqr_zips
-    String sample_name
-    Int memory = 4
-    Int timeout = 2
-  }
-  parameter_meta {
-    bqr_zips: "Array of zipped BQR directories to merge"
-    sample_name: "Sample name for output files"
-    memory: "Memory allocated for this job (GB)"
-    timeout: "Hours before task timeout"
-  }
-
-  command <<<
-    set -euo pipefail
-  
-    mkdir -p ~{sample_name}.sage.bqr
-    
-    # Unzip each BQR file to a unique directory
-    i=0
-    for bqr_zip in ~{sep=' ' bqr_zips}; do
-      mkdir -p temp_bqr/chr_$i
-      unzip -o "$bqr_zip" -d temp_bqr/chr_$i/
-      i=$((i + 1))
-    done
-    
-    # Find all BQR TSV files
-    bqr_files=($(find temp_bqr -name "*.sage.bqr.tsv" | sort))
-    
-    if [ ${#bqr_files[@]} -eq 0 ]; then
-      echo "No BQR files found!"
-      exit 1
-    fi
-    
-    echo "Found ${#bqr_files[@]} BQR files to merge"
-    
-    # Merge: take header from first file, then all data rows from all files
-    cat "${bqr_files[0]}" > ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
-    
-    for bqr_file in "${bqr_files[@]:1}"; do
-      tail -n +2 "$bqr_file" >> ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv
-    done
-    
-    echo "Merged $(wc -l < ~{sample_name}.sage.bqr/~{sample_name}.sage.bqr.tsv) lines total"
-    
-    # Zip the merged directory
-    zip -r ~{sample_name}.sage.bqr.zip ~{sample_name}.sage.bqr/
-  >>>
-
-  runtime {
-    memory: "~{memory} GB"
-    timeout: "~{timeout}"
-  }
-
-  output {
-    File merged_bqr_zip = "~{sample_name}.sage.bqr.zip"
   }
 }
 
@@ -871,6 +769,7 @@ task runWisp {
     File? purple_dir
     File amber_dir
     File cobalt_dir
+    File bqr_dir
     File? somatic_vcf
     File? somatic_vcf_index
     File? probe_variants_file
@@ -891,6 +790,7 @@ task runWisp {
     purple_dir: "Zipped PURPLE directory from primary tumor"
     amber_dir: "Zipped merged AMBER directory"
     cobalt_dir: "Zipped merged COBALT directory"
+    bqr_dir: "Zipped bqr file"
     somatic_vcf: "SAGE VCF with plasma sample appended"
     somatic_vcf_index: "Index for somatic VCF"
     refFasta: "Reference genome fasta"
@@ -910,6 +810,7 @@ task runWisp {
     unzip ~{purple_dir}
     unzip ~{amber_dir}
     unzip ~{cobalt_dir}
+    unzip ~{bqr_dir}
 
     # Create output directory
     mkdir -p ~{plasma_name}.wisp
@@ -922,12 +823,12 @@ task runWisp {
       -purple_dir ~{tumour_name}.solPrimary.purple/ \
       -amber_dir ~{tumour_name}.amber/ \
       -cobalt_dir ~{tumour_name}.cobalt/ \
+      -bqr_dir ~{plasma_name}.sage.bqr \
       -somatic_vcf ~{somatic_vcf} \
       -ref_genome ~{refFasta} \
       -output_dir ~{plasma_name}.wisp/ \
       -probe_variants_file ~{probe_variants_file} \
       -threads ~{threads} \
-      -skip_bqr \
       -write_types ALL \
       ~{additionalParameters}
 
@@ -1133,10 +1034,10 @@ task generateProbeVariants {
     jobMemory: "Memory allocated for this job (GB)"
     timeout: "Hours before task timeout"
   }
-  
+
   command <<<
     set -euo pipefail
-    
+
     # Generate probe variants CSV from PASS + HIGH_CONFIDENCE variants
     zcat ~{annotated_vcf} | \
       grep -v "^#" | \
@@ -1144,23 +1045,101 @@ task generateProbeVariants {
            $7=="PASS" && $8~"TIER=HIGH_CONFIDENCE" {
              printf "~{tumor_id},REPORTABLE_MUTATION,%s:%s %s>%s\n", $1, $2, $4, $5
            }' > ~{outputFileName}
-    
+
     # Verify file has content
     line_count=$(wc -l < ~{outputFileName})
     if [ "$line_count" -le 1 ]; then
       echo "WARNING: No PASS + HIGH_CONFIDENCE variants found"
       echo "This may be expected for downsampled/test data"
     fi
-    
+
     echo "Generated probe variants file with $((line_count - 1)) variants"
   >>>
-  
+
   output {
     File probe_variants = outputFileName
   }
-  
+
   runtime {
     jobMemory:  "~{jobMemory} GB"
     timeout: "~{timeout}"
+  }
+}
+
+task pave {
+  input {
+    String sample
+    File vcf_file
+    File vcf_file_index
+    String refFasta
+    String ensemblDir
+    String? driverGenePanel
+    String genomeVersion
+    String modules
+    Int threads = 8
+    Int memory = 32
+    Int heapRam = 16
+    Int timeout = 24
+    String additionalParameters = ""
+  }
+
+  parameter_meta {
+    sample: "Sample ID"
+    vcf_file: "Input variant VCF"
+    vcf_file_index: "Index for input VCF"
+    refFasta: "Reference genome fasta file"
+    ensemblDir: "Path to Ensembl data cache directory"
+    driverGenePanel: "Driver gene panel file (optional)"
+    genomeVersion: "Reference genome version (hg38 or hg37)"
+    modules: "Required environment modules"
+    threads: "Number of threads"
+    memory: "Memory allocated for this job (GB)"
+    heapRam: "Heap RAM allocation for Pave (GB)"
+    timeout: "Hours before task timeout"
+    additionalParameters: "Additional parameters to pass to Pave"
+  }
+
+  command <<<
+    set -euo pipefail
+
+    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "37"; fi)
+
+    java -Xmx~{heapRam}G -jar $PAVE_ROOT/pave.jar \
+      -sample ~{sample} \
+      -input_vcf ~{vcf_file} \
+      -ref_genome ~{refFasta} \
+      -ref_genome_version ${genome_version} \
+      -ensembl_data_dir ~{ensemblDir} \
+      ~{"-driver_gene_panel " + driverGenePanel} \
+      -output_dir ./ \
+      -threads ~{threads} \
+      ~{additionalParameters}
+
+      # PAVE names output based on input VCF basename, not -sample
+      # Rename to match expected output pattern
+      input_basename=$(basename ~{vcf_file} .vcf.gz)
+      if [ "${input_basename}" != "~{sample}.sage" ]; then
+        mv ${input_basename}.pave.vcf.gz ~{sample}.sage.pave.vcf.gz
+        mv ${input_basename}.pave.vcf.gz.tbi ~{sample}.sage.pave.vcf.gz.tbi
+    fi
+  >>>
+
+  runtime {
+    cpu: "~{threads}"
+    memory: "~{memory} GB"
+    modules: "~{modules}"
+    timeout: "~{timeout}"
+  }
+
+  output {
+    File output_vcf = "~{sample}.sage.pave.vcf.gz"
+    File output_vcf_index = "~{sample}.sage.pave.vcf.gz.tbi"
+  }
+
+  meta {
+    output_meta: {
+      output_vcf: "Pave annotated VCF with gene and transcript effects",
+      output_vcf_index: "Index for Pave annotated VCF"
+    }
   }
 }

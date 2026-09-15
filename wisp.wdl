@@ -613,7 +613,7 @@ task stage_redux_dir {
     }
 
     parameter_meta {
-        redux_dir:          "Existing REDUX output directory"
+        redux_dir:          "Existing REDUX output directory, holding either a BAM with its .bai or a CRAM with its .crai"
         role:               "Which sample this is: tumor, normal or longitudinal. Used to name the sample in an error"
         sample_id_override: "Selects which sample to take when the directory holds more than one. Otherwise the directory must hold exactly one"
         jobMemory:          "Memory allocated to the job, in GB"
@@ -628,27 +628,37 @@ task stage_redux_dir {
         dir="~{redux_dir}"
         [ -d "${dir}" ] || { echo "ERROR: ~{role} redux_dir is not a directory: ${dir}" >&2; exit 1; }
 
+        # CRAM first, as the resolver upstream does, then BAM.
         wanted="~{default="" sample_id_override}"
         if [ -n "${wanted}" ]; then
-            bam="${dir}/${wanted}.redux.bam"
-            [ -f "${bam}" ] || { echo "ERROR: no ${wanted}.redux.bam in ${dir}" >&2; exit 1; }
+            for ext in cram bam; do
+                [ -f "${dir}/${wanted}.redux.${ext}" ] && aln="${dir}/${wanted}.redux.${ext}" && break
+            done
+            [ -n "${aln:-}" ] || {
+                echo "ERROR: no ${wanted}.redux.cram or ${wanted}.redux.bam in ${dir}" >&2; exit 1; }
         else
-            count=$(find "${dir}" -maxdepth 1 -name '*.redux.bam' | wc -l)
+            count=$(find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \) | wc -l)
             if [ "${count}" -ne 1 ]; then
-                echo "ERROR: ~{role} redux_dir holds ${count} *.redux.bam files, expected one;" \
-                     "name the one to use with the sample id input: ${dir}" >&2
+                echo "ERROR: ~{role} redux_dir holds ${count} *.redux.cram or *.redux.bam files," \
+                     "expected one; name the one to use with the sample id input: ${dir}" >&2
                 exit 1
             fi
-            bam=$(find "${dir}" -maxdepth 1 -name '*.redux.bam')
+            aln=$(find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \))
         fi
 
-        sample_id=$(basename "${bam}" .redux.bam)
+        aln_ext="${aln##*.}"
+        case "${aln_ext}" in
+            cram) idx_ext=crai ;;
+            bam)  idx_ext=bai ;;
+        esac
+
+        sample_id=$(basename "${aln}" ".redux.${aln_ext}")
         echo "${sample_id}" > sample_id.txt
 
         # The tools resolve every file in the directory by this exact prefix, but they read
         # the sample out of the alignment header, so the two disagreeing produces a run that
         # looks for files that are not there. Refused here rather than several hours in.
-        sm=$(samtools view -H "${bam}" | awk -F'\t' '$1 == "@RG" {
+        sm=$(samtools view -H "${aln}" | awk -F'\t' '$1 == "@RG" {
                  for (i = 2; i <= NF; i++) if ($i ~ /^SM:/) { print substr($i, 4); }
              }' | sort -u)
         if [ "${sm}" != "${sample_id}" ]; then
@@ -661,8 +671,8 @@ task stage_redux_dir {
         # The three tables SAGE reads. Their absence would silently switch it to skipping
         # recalibration and jitter fitting, so a directory without them is refused.
         mkdir -p redux
-        ln -s "${bam}" "redux/${sample_id}.redux.bam"
-        for suffix in redux.bam.bai redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+        ln -s "${aln}" "redux/${sample_id}.redux.${aln_ext}"
+        for suffix in "redux.${aln_ext}.${idx_ext}" redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
             src="${dir}/${sample_id}.${suffix}"
             [ -f "${src}" ] || { echo "ERROR: ${sample_id}.${suffix} is missing from ${dir}" >&2; exit 1; }
             ln -s "${src}" "redux/${sample_id}.${suffix}"
@@ -690,10 +700,11 @@ task stage_redux_dir {
         # Matched rather than named: the sample id is only known once the task has run, and a
         # path built from a function call is one the engine cannot evaluate when it works out
         # what the job produces. Exactly one alignment is linked in, so the match is unique.
-        File bam = glob("redux/*.redux.bam")[0]
-        File bai = glob("redux/*.redux.bam.bai")[0]
-        Array[File] alignments = glob("redux/*.redux.bam")
-        Array[File] indexes = glob("redux/*.redux.bam.bai")
+        # The patterns take both a BAM and its .bai and a CRAM and its .crai.
+        File bam = glob("redux/*.redux.*am")[0]
+        File bai = glob("redux/*.redux.*ai")[0]
+        Array[File] alignments = glob("redux/*.redux.*am")
+        Array[File] indexes = glob("redux/*.redux.*ai")
         Array[File] tsvs = flatten([glob("redux/*.tsv"), glob("redux/*.tsv.gz")])
     }
 }
@@ -1331,6 +1342,10 @@ task amber {
     }
 
     Int heapMb = floor(jobMemory * 1024 * heapFraction)
+    String tumor_ext = sub(basename(tumor_bam), "^.*\\.", "")
+    String tumor_idx_ext = sub(basename(tumor_bai), "^.*\\.", "")
+    String normal_ext = sub(basename(select_first([normal_bam, tumor_bam])), "^.*\\.", "")
+    String normal_idx_ext = sub(basename(select_first([normal_bai, tumor_bai])), "^.*\\.", "")
 
     command <<<
         set -euo pipefail
@@ -1360,10 +1375,10 @@ task amber {
 
         # The tools find an index by its position beside the alignment, so both are linked
         # into the task directory under their expected names.
-        ln -s "~{tumor_bam}" "~{tumor_id}.redux.bam"
-        ln -s "~{tumor_bai}" "~{tumor_id}.redux.bam.bai"
-        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux.bam\"" else ""}
-        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux.bam.bai\"" else ""}
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux." + normal_ext + "\"" else ""}
+        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux." + normal_ext + "." + normal_idx_ext + "\"" else ""}
 
         mkdir -p amber
 
@@ -1372,9 +1387,9 @@ task amber {
         amber \
             -Xmx~{heapMb}m \
             -tumor ~{tumor_id} \
-            -tumor_bam ~{tumor_id}.redux.bam \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
             ~{if defined(normal_id) then "-reference " + normal_id else ""} \
-            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux.bam" else ""} \
+            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux." + normal_ext else ""} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -sequencing_type ~{platform} \
@@ -1461,6 +1476,10 @@ task cobalt {
     }
 
     Int heapMb = floor(jobMemory * 1024 * heapFraction)
+    String tumor_ext = sub(basename(tumor_bam), "^.*\\.", "")
+    String tumor_idx_ext = sub(basename(tumor_bai), "^.*\\.", "")
+    String normal_ext = sub(basename(select_first([normal_bam, tumor_bam])), "^.*\\.", "")
+    String normal_idx_ext = sub(basename(select_first([normal_bai, tumor_bai])), "^.*\\.", "")
 
     command <<<
         set -euo pipefail
@@ -1488,10 +1507,10 @@ task cobalt {
         add_bind_root "$(pwd)"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
-        ln -s "~{tumor_bam}" "~{tumor_id}.redux.bam"
-        ln -s "~{tumor_bai}" "~{tumor_id}.redux.bam.bai"
-        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux.bam\"" else ""}
-        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux.bam.bai\"" else ""}
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux." + normal_ext + "\"" else ""}
+        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux." + normal_ext + "." + normal_idx_ext + "\"" else ""}
 
         mkdir -p cobalt
 
@@ -1500,9 +1519,9 @@ task cobalt {
         cobalt \
             -Xmx~{heapMb}m \
             -tumor ~{tumor_id} \
-            -tumor_bam ~{tumor_id}.redux.bam \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
             ~{if defined(normal_id) then "-reference " + normal_id else ""} \
-            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux.bam" else ""} \
+            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux." + normal_ext else ""} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -gc_profile ~{gc_profile} \
@@ -1601,6 +1620,10 @@ task sage_somatic {
     }
 
     Int heapMb = floor(jobMemory * 1024 * heapFraction)
+    String tumor_ext = sub(basename(tumor_bam), "^.*\\.", "")
+    String tumor_idx_ext = sub(basename(tumor_bai), "^.*\\.", "")
+    String normal_ext = sub(basename(normal_bam), "^.*\\.", "")
+    String normal_idx_ext = sub(basename(normal_bai), "^.*\\.", "")
 
     command <<<
         set -euo pipefail
@@ -1631,10 +1654,10 @@ task sage_somatic {
         # SAGE takes the recalibration and jitter tables from the directory holding the
         # alignment, so alignments, indexes and tables all go into one directory. The names
         # are sample-prefixed, so the two samples' tables do not collide.
-        ln -s "~{tumor_bam}" "~{tumor_id}.redux.bam"
-        ln -s "~{tumor_bai}" "~{tumor_id}.redux.bam.bai"
-        ln -s "~{normal_bam}" "~{normal_id}.redux.bam"
-        ln -s "~{normal_bai}" "~{normal_id}.redux.bam.bai"
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ln -s "~{normal_bam}" "~{normal_id}.redux.~{normal_ext}"
+        ln -s "~{normal_bai}" "~{normal_id}.redux.~{normal_ext}.~{normal_idx_ext}"
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(tumor_tsvs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(normal_tsvs)}
 
@@ -1653,10 +1676,10 @@ task sage_somatic {
         sage \
             -Xmx~{heapMb}m \
             -reference ~{normal_id} \
-            -reference_bam ~{normal_id}.redux.bam \
+            -reference_bam ~{normal_id}.redux.~{normal_ext} \
             -ref_sample_count 1 \
             -tumor ~{tumor_id} \
-            -tumor_bam ~{tumor_id}.redux.bam \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -hotspots ~{hotspots} \
@@ -2145,6 +2168,8 @@ task sage_append {
     }
 
     Int heapMb = floor(jobMemory * 1024 * heapFraction)
+    String long_ext = sub(basename(longitudinal_bam), "^.*\\.", "")
+    String long_idx_ext = sub(basename(longitudinal_bai), "^.*\\.", "")
 
     command <<<
         set -euo pipefail
@@ -2176,8 +2201,8 @@ task sage_append {
         # the alignment.
         mkdir -p purple_primary
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
-        ln -s "~{longitudinal_bam}" "~{longitudinal_id}.redux.bam"
-        ln -s "~{longitudinal_bai}" "~{longitudinal_id}.redux.bam.bai"
+        ln -s "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
+        ln -s "~{longitudinal_bai}" "~{longitudinal_id}.redux.~{long_ext}.~{long_idx_ext}"
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
 
         for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
@@ -2198,7 +2223,7 @@ task sage_append {
             -input_vcf purple_primary/~{primary_id}.purple.somatic.vcf.gz \
             -max_read_depth 100000 \
             -reference ~{longitudinal_id} \
-            -reference_bam ~{longitudinal_id}.redux.bam \
+            -reference_bam ~{longitudinal_id}.redux.~{long_ext} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -sequencing_type ~{platform} \

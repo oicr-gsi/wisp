@@ -49,7 +49,7 @@ workflow wisp {
         String? longitudinal_sequencing_platform
         Boolean use_copy_number = true
         String hmftools_log_level = "INFO"
-        Array[String] singularity_binds = []
+        Array[String] container_binds = []
         String images_dir = "$WISP_IMAGES_DIR"
         String ref_data_dir = "$WISP_REF_DATA_DIR"
         String genome_fasta = "$WISP_GENOME_FASTA"
@@ -73,7 +73,7 @@ workflow wisp {
         longitudinal_sequencing_platform: "Platform of the longitudinal sample, which may differ from the primary's. Read from its read-group PL tag when not set"
         use_copy_number:         "Whether WISP is also asked for COPY_NUMBER. When false, COBALT does not run on the longitudinal sample and WISP reports somatic-variant evidence alone"
         hmftools_log_level:      "Log level passed to every tool: ERROR, WARN, INFO, DEBUG or TRACE"
-        singularity_binds:       "Host paths to bind into every container. Each is reduced to its filesystem root, and the task directory, the reference data and wherever the alignments really live are bound automatically, so this is only needed for a path the workflow cannot discover"
+        container_binds:         "Extra host paths to bind into every container, each reduced to its filesystem root. Rarely needed, and empty is the normal case: the task directory, the reference data and wherever the alignments really live are all discovered and bound automatically"
         images_dir:              "Directory holding the container images, normally the literal $WISP_IMAGES_DIR"
         ref_data_dir:            "Root of the extracted HMF resource bundle, normally the literal $WISP_REF_DATA_DIR"
         genome_fasta:            "Reference genome FASTA, normally the literal $WISP_GENOME_FASTA. Its .fai and .dict must sit beside it"
@@ -88,7 +88,7 @@ workflow wisp {
     }
 
     # What the caller asked to bind, plus wherever the resources turned out to be.
-    Array[String] all_binds = flatten([singularity_binds, resolve_resources.binds])
+    Array[String] all_binds = flatten([container_binds, resolve_resources.binds])
 
     String images = resolve_resources.images
     String ref_data = resolve_resources.ref_data
@@ -156,6 +156,14 @@ workflow wisp {
     }
 
     if (run_longitudinal) {
+        # Ahead of the preflight, so what the archive says about the primary can be checked
+        # alongside everything else rather than discovered once WISP is running.
+        if (defined(primary_tarball)) {
+            call extract_primary {
+                input: tarball = select_first([primary_tarball])
+            }
+        }
+
         if (defined(longitudinal_redux_dir)) {
             call stage_redux_dir as stage_longitudinal {
                 input: redux_dir = select_first([longitudinal_redux_dir]),
@@ -190,6 +198,9 @@ workflow wisp {
             has_normal_redux_dir    = defined(normal_redux_dir),
             has_longitudinal_redux_dir = defined(longitudinal_redux_dir),
             has_primary_tarball     = defined(primary_tarball),
+            primary_contigs         = extract_primary.contig_names,
+            primary_purple_version  = extract_primary.purple_version,
+            primary_tumor_id        = extract_primary.tumor_id,
             outputFileNamePrefix    = outputFileNamePrefix,
             sequencing_platform     = sequencing_platform,
             longitudinal_sequencing_platform = longitudinal_sequencing_platform,
@@ -233,7 +244,7 @@ workflow wisp {
                 unmap_regions   = unmap_regions,
                 log_level       = hmftools_log_level,
                 images_dir      = images,
-                singularity_binds = all_binds,
+                container_binds = all_binds,
                 checked         = validate_inputs.checked
             }
         }
@@ -254,7 +265,7 @@ workflow wisp {
                 unmap_regions   = unmap_regions,
                 log_level       = hmftools_log_level,
                 images_dir      = images,
-                singularity_binds = all_binds,
+                container_binds = all_binds,
                 checked         = validate_inputs.checked
             }
         }
@@ -277,7 +288,7 @@ workflow wisp {
                 checked        = validate_inputs.checked,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call cobalt as cobalt_primary {
@@ -294,7 +305,7 @@ workflow wisp {
                 checked        = validate_inputs.checked,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call sage_somatic {
@@ -319,7 +330,7 @@ workflow wisp {
                 checked        = validate_inputs.checked,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call pave_somatic {
@@ -338,7 +349,7 @@ workflow wisp {
                 ensembl_data_dir = ensembl_data_dir,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call purple {
@@ -360,7 +371,7 @@ workflow wisp {
                 germline_amp_del_freq = germline_amp_del_freq,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call pack_primary {
@@ -380,12 +391,6 @@ workflow wisp {
     # ---------------------------------------------------------------------------------
 
     if (run_longitudinal) {
-        if (defined(primary_tarball)) {
-            call extract_primary {
-                input: tarball = select_first([primary_tarball])
-            }
-        }
-
         String primary_id = select_first([probe_tumor.sample_id, extract_primary.tumor_id])
         Array[File] primary_purple = select_first([purple.purple_files, extract_primary.purple_files])
 
@@ -402,7 +407,7 @@ workflow wisp {
                 unmap_regions   = unmap_regions,
                 log_level       = hmftools_log_level,
                 images_dir      = images,
-                singularity_binds = all_binds,
+                container_binds = all_binds,
                 checked         = validate_inputs.checked
             }
         }
@@ -425,7 +430,7 @@ workflow wisp {
                     checked        = validate_inputs.checked,
                     log_level      = hmftools_log_level,
                     images_dir     = images,
-                    singularity_binds = all_binds
+                    container_binds = all_binds
             }
         }
 
@@ -443,7 +448,7 @@ workflow wisp {
                 outputFileNamePrefix = outputFileNamePrefix,
                 log_level      = hmftools_log_level,
                 images_dir     = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
 
         call wisp_purity {
@@ -461,7 +466,7 @@ workflow wisp {
                 outputFileNamePrefix = outputFileNamePrefix,
                 log_level       = hmftools_log_level,
                 images_dir      = images,
-                singularity_binds = all_binds
+                container_binds = all_binds
         }
     }
 
@@ -831,6 +836,9 @@ task validate_inputs {
         Boolean has_normal_redux_dir
         Boolean has_longitudinal_redux_dir
         Boolean has_primary_tarball
+        File? primary_contigs
+        String? primary_purple_version
+        String? primary_tumor_id
         String outputFileNamePrefix
         String? sequencing_platform
         String? longitudinal_sequencing_platform
@@ -859,6 +867,9 @@ task validate_inputs {
         has_normal_redux_dir: "Whether an existing REDUX directory was supplied for the matched normal"
         has_longitudinal_redux_dir: "Whether an existing REDUX directory was supplied for the longitudinal sample"
         has_primary_tarball: "Whether a primary tarball was supplied"
+        primary_contigs:     "Contigs the primary call set was made against, in the order its caller used. In PE mode there are no primary alignments to read, so this is the only evidence of what the primary was called with"
+        primary_purple_version: "PURPLE version that produced the primary call set, recorded in the log"
+        primary_tumor_id:    "Primary tumour sample id read out of the archive, recorded in the log"
         outputFileNamePrefix: "Prefix for the provisioned log"
         sequencing_platform: "Primary platform override, which wins over what the tumour and normal read groups report"
         longitudinal_sequencing_platform: "Longitudinal platform override, which wins over what its read groups report"
@@ -1038,6 +1049,20 @@ task validate_inputs {
                 [ -n "${role}" ] || continue
                 errors+=("the ${role} alignment header does not list contigs in the reference's order (first divergence at reference line ${detail}); the tools index contigs by header position, so read evidence would be silently discarded")
             done < contig_mismatch.txt
+
+            # The primary arrives already called, so its alignments cannot be checked. Its
+            # call set carries the dictionary its caller used, which shows the same defect.
+            primary_contigs="~{default="" primary_contigs}"
+            if [ -n "${primary_contigs}" ] && [ -s "${primary_contigs}" ]; then
+                pn=$(grep -c . "${primary_contigs}")
+                head -n "${pn}" reference_contigs.txt > reference_prefix_primary.txt
+                if ! diff -q reference_prefix_primary.txt "${primary_contigs}" >/dev/null 2>&1; then
+                    first=$(diff --unchanged-line-format= --old-line-format='%dn %L' \
+                                 --new-line-format= reference_prefix_primary.txt "${primary_contigs}" \
+                            | head -1 || true)
+                    errors+=("the primary call set in primary_tarball was made against a reference whose contigs are ordered differently from this run's (first divergence at reference line ${first}); its variant calls would have been made with read evidence silently discarded")
+                fi
+            fi
         else
             errors+=("reference index not readable: ${fai}")
         fi
@@ -1083,6 +1108,11 @@ task validate_inputs {
             echo "copy_number: ~{if use_copy_number then "true" else "false"}"
             paste "~{write_lines(roles)}" "~{write_lines(sample_ids)}" \
                 | while IFS=$'\t' read -r role sid; do echo "${role}: ${sid}"; done
+            if ~{if has_primary_tarball then "true" else "false"}; then
+                echo "primary from tarball: ~{default="unknown" primary_tumor_id}"
+                echo "primary purple version: ~{default="unknown" primary_purple_version}"
+                echo "primary call set contigs: $(grep -c . "${primary_contigs:-/dev/null}" 2>/dev/null || echo 0)"
+            fi
             echo "reference: ~{genome_fasta}"
             echo "contigs: $(wc -l < reference_contigs.txt)"
         } | tee ~{outputFileNamePrefix}.validation.log
@@ -1118,7 +1148,7 @@ task redux {
         String unmap_regions
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String? checked
         String image = "hmftools-redux-2.0.5--hdfd78af_0.img"
         Float heapFraction = 0.75
@@ -1139,7 +1169,7 @@ task redux {
         unmap_regions:    "Regions whose reads are unmapped before duplicate marking"
         log_level:        "Log level passed to the tool"
         images_dir:       "Directory holding the container images"
-        singularity_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
+        container_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
         checked:          "Preflight result, taken only so that no expensive task starts before validate_inputs passes"
         image:            "Container image filename within images_dir"
         heapFraction:     "Fraction of jobMemory given to the JVM heap. The remainder covers the helper processes the tool forks, which are charged to the same allocation"
@@ -1175,7 +1205,7 @@ task redux {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The engine localizes an alignment and its index into separate directories, but the
         # tools resolve an index by its position beside the alignment, so both are linked into
@@ -1266,7 +1296,7 @@ task amber {
         String? checked
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         Int? tumor_min_depth
         String image = "hmftools-amber-4.3--hdfd78af_0.img"
         Float heapFraction = 0.75
@@ -1290,7 +1320,7 @@ task amber {
         checked:            "Preflight result, taken only so that no expensive task starts before validate_inputs passes"
         log_level:          "Log level passed to the tool"
         images_dir:         "Directory holding the container images"
-        singularity_binds:  "Host paths to bind into the container"
+        container_binds:  "Host paths to bind into the container"
         tumor_min_depth:    "Minimum tumour depth for a site to be used. Left unset for a primary, where the default applies"
         image:              "Container image filename within images_dir"
         heapFraction:       "Fraction of jobMemory given to the JVM heap"
@@ -1326,7 +1356,7 @@ task amber {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The tools find an index by its position beside the alignment, so both are linked
         # into the task directory under their expected names.
@@ -1398,7 +1428,7 @@ task cobalt {
         String? checked
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-cobalt-3.0--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 32
@@ -1421,7 +1451,7 @@ task cobalt {
         checked:           "Preflight result, taken only so that no expensive task starts before validate_inputs passes"
         log_level:         "Log level passed to the tool"
         images_dir:        "Directory holding the container images"
-        singularity_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
+        container_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
         image:             "Container image filename within images_dir"
         heapFraction:      "Fraction of jobMemory given to the JVM heap"
         jobMemory:         "Memory allocated to the job, in GB"
@@ -1456,7 +1486,7 @@ task cobalt {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         ln -s "~{tumor_bam}" "~{tumor_id}.redux.bam"
         ln -s "~{tumor_bai}" "~{tumor_id}.redux.bam.bai"
@@ -1531,7 +1561,7 @@ task sage_somatic {
         String? checked
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-sage-5.0.2--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 80
@@ -1561,7 +1591,7 @@ task sage_somatic {
         checked:             "Preflight result, taken only so that no expensive task starts before validate_inputs passes"
         log_level:           "Log level passed to the tool"
         images_dir:          "Directory holding the container images"
-        singularity_binds:   "Host paths to bind into the container"
+        container_binds:   "Host paths to bind into the container"
         image:               "Container image filename within images_dir"
         heapFraction:        "Fraction of jobMemory given to the JVM heap"
         jobMemory:           "Memory allocated to the job, in GB"
@@ -1596,7 +1626,7 @@ task sage_somatic {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # SAGE takes the recalibration and jitter tables from the directory holding the
         # alignment, so alignments, indexes and tables all go into one directory. The names
@@ -1681,7 +1711,7 @@ task pave_somatic {
         String ensembl_data_dir
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-pave-1.9--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 32
@@ -1705,7 +1735,7 @@ task pave_somatic {
         ensembl_data_dir:  "Ensembl gene and transcript tables"
         log_level:         "Log level passed to the tool"
         images_dir:        "Directory holding the container images"
-        singularity_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
+        container_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
         image:             "Container image filename within images_dir"
         heapFraction:      "Fraction of jobMemory given to the JVM heap"
         jobMemory:         "Memory allocated to the job, in GB"
@@ -1740,7 +1770,7 @@ task pave_somatic {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index is resolved beside the VCF, so both go into one directory of their own
         # rather than into the task directory, where the localized copy already sits.
@@ -1810,7 +1840,7 @@ task purple {
         String germline_amp_del_freq
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-purple-4.4--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 32
@@ -1837,7 +1867,7 @@ task purple {
         germline_amp_del_freq: "Cohort germline amplification and deletion frequencies"
         log_level:             "Log level passed to the tool"
         images_dir:            "Directory holding the container images"
-        singularity_binds:     "Host paths to bind into the container"
+        container_binds:     "Host paths to bind into the container"
         image:                 "Container image filename within images_dir"
         heapFraction:          "Fraction of jobMemory given to the JVM heap"
         jobMemory:             "Memory allocated to the job, in GB"
@@ -1872,7 +1902,7 @@ task purple {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # PURPLE takes directories, so the upstream outputs are relinked into the shapes it
         # expects.
@@ -2032,7 +2062,22 @@ task extract_primary {
             exit 1
         fi
         basename "${purity}" .purple.purity.tsv > tumor_id.txt
-        echo "primary tumour sample id: $(cat tumor_id.txt)" >&2
+
+        # What the primary was called with. The somatic VCF carries the sequence dictionary
+        # the caller used, which is the one thing in the archive that can show the primary was
+        # called against a different reference from the one this run uses.
+        sed -n 's/^version=//p' primary/purple/purple.version 2>/dev/null | head -1 > purple_version.txt
+        [ -s purple_version.txt ] || echo unknown > purple_version.txt
+
+        vcf="primary/purple/$(cat tumor_id.txt).purple.somatic.vcf.gz"
+        : > primary_contigs.txt
+        if [ -f "${vcf}" ]; then
+            zcat "${vcf}" | sed -n 's/^##contig=<ID=\([^,>]*\).*/\1/p' > primary_contigs.txt
+        fi
+
+        echo "primary tumour sample id: $(cat tumor_id.txt)," \
+             "called by PURPLE $(cat purple_version.txt)," \
+             "$(grep -c . primary_contigs.txt) contigs in its call set" >&2
     >>>
 
     runtime {
@@ -2044,6 +2089,8 @@ task extract_primary {
 
     output {
         String tumor_id = read_string("tumor_id.txt")
+        String purple_version = read_string("purple_version.txt")
+        File contig_names = "primary_contigs.txt"
         Array[File] purple_files = glob("primary/purple/*")
         Array[File] amber_files = glob("primary/amber/*")
     }
@@ -2066,7 +2113,7 @@ task sage_append {
         String outputFileNamePrefix
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-sage-5.0.2--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 48
@@ -2088,7 +2135,7 @@ task sage_append {
         outputFileNamePrefix: "Prefix for the output VCF, which is provisioned"
         log_level:          "Log level passed to the tool"
         images_dir:         "Directory holding the container images"
-        singularity_binds:  "Host paths to bind into the container"
+        container_binds:  "Host paths to bind into the container"
         image:              "Container image filename within images_dir"
         heapFraction:       "Fraction of jobMemory given to the JVM heap"
         jobMemory:          "Memory allocated to the job, in GB"
@@ -2123,7 +2170,7 @@ task sage_append {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index has to sit beside the VCF, and the recalibration and jitter tables beside
         # the alignment.
@@ -2198,7 +2245,7 @@ task wisp_purity {
         String outputFileNamePrefix
         String log_level
         String images_dir
-        Array[String] singularity_binds
+        Array[String] container_binds
         String image = "hmftools-wisp-1.3.1--hdfd78af_0.img"
         Float heapFraction = 0.75
         Int jobMemory = 32
@@ -2221,7 +2268,7 @@ task wisp_purity {
         outputFileNamePrefix: "Prefix for the provisioned summary and archive"
         log_level:         "Log level passed to the tool"
         images_dir:        "Directory holding the container images"
-        singularity_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
+        container_binds: "Host paths to bind into the container. Each is reduced to its filesystem root, so naming a directory below one already bound is harmless"
         image:             "Container image filename within images_dir"
         heapFraction:      "Fraction of jobMemory given to the JVM heap"
         jobMemory:         "Memory allocated to the job, in GB"
@@ -2256,7 +2303,7 @@ task wisp_purity {
         }
 
         add_bind_root "$(pwd)"
-        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(singularity_binds)}
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}

@@ -229,6 +229,30 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.longitudinal_append_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
@@ -431,6 +455,30 @@
                 ],
                 "type": "ALL"
             },
+            "wisp.primary_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_purity": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -622,6 +670,30 @@
         "id": "wisp_test03",
         "metadata": {
             "wisp.validation_log": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_purity": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"

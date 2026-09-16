@@ -41,6 +41,10 @@ read-group SM tag.
 | `test03` | PE | the REDUX-directory route, and `use_copy_number = false` |
 | `test04` | WG_PE | both stages in one run |
 
+Every case lists all seven file outputs in its `metadata`, which the regression validator
+requires whether or not the mode produces them: a `WG` case provisions nothing for the WISP
+outputs, and a `PE` case nothing for the primary ones.
+
 The cases differ in output shape rather than in input values, so each one catches something
 the others cannot. `test03` is the exception: it produces the same file list as `test02`
 but reaches it by a different route and with a shorter WISP summary, which

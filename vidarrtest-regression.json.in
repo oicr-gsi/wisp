@@ -1,83 +1,46 @@
 [
     {
         "arguments": {
-            "wisp.amberPlasma.amberScript": null,			
-            "wisp.amberPlasma.memory": null,			
-            "wisp.amberPlasma.min_base_quality": null,			
-            "wisp.amberPlasma.min_mapping_quality": null,			
-            "wisp.amberPlasma.threads": null,			
-            "wisp.amberPlasma.timeout": null,			
-            "wisp.amberPrimary.amberScript": null,			
-            "wisp.amberPrimary.memory": null,
-            "wisp.amberPlasma.heapRam": null,
-            "wisp.amberPlasma.additionalParameters": null,				
-            "wisp.amberPrimary.min_base_quality": null, 			
-            "wisp.amberPrimary.min_mapping_quality": null,
-            "wisp.amberPrimaryChr.amberScrip": null,
-            "wisp.amberPrimaryChr.min_mapping_quality": null,
-            "wisp.amberPrimaryChr.min_base_quality": null,
-            "wisp.amberPrimaryChr.amberScript": null,
-            "wisp.amberPlasmaChr.amberScript": null,
-            "wisp.amberPlasmaChr.min_mapping_quality": null,
-            "wisp.amberPlasmaChr.heapRam": null,
-            "wisp.amberPlasmaChr.additionalParameters": null,	
-            "wisp.amberPlasmaChr.min_base_quality": null,
-            "wisp.amberPrimaryChr.heapRam": null,
-            "wisp.amberPrimaryChr.additionalParameters": null,			
-            "wisp.amberPrimary.threads": null,			
-            "wisp.amberPrimary.timeout": null,
-            "wisp.amberPrimary.heapRam": null,
-            "wisp.amberPrimary.additionalParameters": null,
-            "wisp.annotatePlasmaVcfWithPurple.modules": null,
-            "wisp.generateProbeVariants.outputFileName": null,
-            "wisp.generateProbeVariants.jobMemory": null,
-            "wisp.generateProbeVariants.timeout": null,
-            "wisp.annotatePrimaryVcfWithPurple.modules": null,			
-            "wisp.chromosomes": null,
-            "wisp.cobaltPlasma.colbaltScript": null,			
-            "wisp.cobaltPlasma.gamma": null,			
-            "wisp.cobaltPlasma.memory": null,			
-            "wisp.cobaltPlasma.min_mapping_quality": null,			
-            "wisp.cobaltPlasma.threads": null, 
-            "wisp.cobaltPlasma.timeout": null,
-            "wisp.cobaltPlasma.heapRam": null,
-            "wisp.cobaltPlasma.additionalParameters": null,		
-            "wisp.cobaltPrimary.colbaltScript": null,			
-            "wisp.cobaltPrimary.gamma": null,
-            "wisp.cobaltPrimary.memory": null,			
-            "wisp.cobaltPrimary.min_mapping_quality": null,
-            "wisp.cobaltPrimary.threads": null,
-            "wisp.cobaltPrimary.timeout": null,
-            "wisp.cobaltPrimary.heapRam": null,
-            "wisp.cobaltPrimary.additionalParameters": null,
-            "wisp.donor": "test_01_test",			
-            "wisp.extractNormalName.memory": null, 
-            "wisp.extractNormalName.timeout": null, 
-            "wisp.extractNormalName.heapRam": null, 
-            "wisp.extractPlasmaName.memory": null, 
-            "wisp.extractPlasmaName.timeout": null, 
-            "wisp.extractPlasmaName.heapRam": null, 
-            "wisp.extractTumorName.memory": null, 
-            "wisp.extractTumorName.timeout": null,
-            "wisp.extractTumorName.heapRam": null, 
-            "wisp.genomeVersion": null,
-            "wisp.mergePlasmaBqr.memory": null, 
-            "wisp.mergePlasmaBqr.timeout": null, 
-            "wisp.mergeSagePlasmaVcfs.memory": null, 
-            "wisp.mergeSagePlasmaVcfs.timeout": null, 
-            "wisp.normal_bai": {
-                        "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
-                            "externalIds": [
-                                {
-                                    "id": "TEST",
-                                    "provider": "TEST"
-                                }
-                            ]
-                        },
-                        "type": "EXTERNAL"
-            },			
-            "wisp.normal_bam": {
+            "wisp.amber_primary.cores": null,
+            "wisp.amber_primary.heapFraction": null,
+            "wisp.amber_primary.image": null,
+            "wisp.amber_primary.jobMemory": null,
+            "wisp.amber_primary.modules": null,
+            "wisp.amber_primary.timeout": null,
+            "wisp.amber_primary.tumor_min_depth": null,
+            "wisp.cobalt_longitudinal.cores": null,
+            "wisp.cobalt_longitudinal.heapFraction": null,
+            "wisp.cobalt_longitudinal.image": null,
+            "wisp.cobalt_longitudinal.jobMemory": null,
+            "wisp.cobalt_longitudinal.modules": null,
+            "wisp.cobalt_longitudinal.normal_bai": null,
+            "wisp.cobalt_longitudinal.normal_bam": null,
+            "wisp.cobalt_longitudinal.normal_id": null,
+            "wisp.cobalt_longitudinal.timeout": null,
+            "wisp.cobalt_primary.cores": null,
+            "wisp.cobalt_primary.diploid_bed": null,
+            "wisp.cobalt_primary.heapFraction": null,
+            "wisp.cobalt_primary.image": null,
+            "wisp.cobalt_primary.jobMemory": null,
+            "wisp.cobalt_primary.modules": null,
+            "wisp.cobalt_primary.timeout": null,
+            "wisp.container_binds": null,
+            "wisp.donor_id": "test_01",
+            "wisp.extract_primary.cores": null,
+            "wisp.extract_primary.jobMemory": null,
+            "wisp.extract_primary.modules": null,
+            "wisp.extract_primary.timeout": null,
+            "wisp.genome_fasta": null,
+            "wisp.hmftools_log_level": null,
+            "wisp.images_dir": null,
+            "wisp.longitudinal_alignments": null,
+            "wisp.longitudinal_redux_dir": null,
+            "wisp.longitudinal_sample_id": null,
+            "wisp.longitudinal_sequencing_platform": null,
+            "wisp.mode": "WG",
+            "wisp.normal_alignments": [
+                {
+                    "aln": {
                         "contents": {
                             "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
                             "externalIds": [
@@ -88,10 +51,10 @@
                             ]
                         },
                         "type": "EXTERNAL"
-            },			
-            "wisp.plasma_bai": {
+                    },
+                    "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -100,101 +63,95 @@
                             ]
                         },
                         "type": "EXTERNAL"
-            },			
-            "wisp.plasma_bam": {
-                        "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam",
-                            "externalIds": [
-                                {
-                                    "id": "TEST",
-                                    "provider": "TEST"
-                                }
-                            ]
-                        },
-                        "type": "EXTERNAL"
-            },			
-            "wisp.purple.max_ploidy": null,
-            "wisp.purple.max_purity": null,
-            "wisp.purple.memory": null,			
-            "wisp.purple.min_diploid_tumor_ratio_count": null,
-            "wisp.purple.min_ploidy": null,
-            "wisp.purple.min_purity": null,
-            "wisp.purple.outfilePrefix": null,
-            "wisp.purple.ploidy_penalty_factor": null,
-            "wisp.purple.ploidy_penalty_standard_deviation": null,			
-            "wisp.purple.purpleScript": null,
-            "wisp.purple.threads": null,
-            "wisp.purple.timeout": null, 
-            "wisp.purple.heapRam": null,
-            "wisp.purple.additionalParameters": null,
-            "wisp.pave.threads": null,
-            "wisp.pave.memory": null,
-            "wisp.pave.heapRam": null,
-            "wisp.pave.timeout": null,
-            "wisp.pave.additionalParameters": null,
-            "wisp.pave.driverGenePanel": null,
-            "wisp.sage_append.driverGenePanel": null,
-            "wisp.runWisp.memory": null,
-            "wisp.runWisp.threads": null,
-            "wisp.runWisp.timeout": null,
-            "wisp.runWisp.purple_dir": null,
-            "wisp.runWisp.amber_dir": null,
-            "wisp.runWisp.cobalt_dir": null,
-            "wisp.runWisp.somatic_vcf": null,
-            "wisp.runWisp.somatic_vcf_index": null,
-            "wisp.runWisp.bqr_dir": null,
-            "wisp.runWisp.heapRam": null,
-            "wisp.runWisp.additionalParameters": null,
-            "wisp.purple.solution_name": null,
-            "wisp.sage_primary_vcf_index": {
-                        "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_Novaseq_X_Validation_v1-2.sage.vcf.gz.tbi",
-                            "externalIds": [
-                                {
-                                    "id": "TEST",
-                                    "provider": "TEST"
-                                }
-                            ]
-                        },
-                        "type": "EXTERNAL"
-            },
-            "wisp.sage_primary_vcf": {
-                        "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_Novaseq_X_Validation_v1-2.sage.vcf.gz",
-                            "externalIds": [
-                                {
-                                    "id": "TEST",
-                                    "provider": "TEST"
-                                }
-                            ]
-                        },
-                        "type": "EXTERNAL"
-            },
-            "wisp.sage_append.hard_min_tumor_qual": null,
-            "wisp.sage_append.hard_min_tumor_raw_alt_support": null, 		
-            "wisp.sage_append.hard_min_tumor_vaf": null,
-            "wisp.sage_append.memory": null, 
-            "wisp.sage_append.min_map_quality": null, 
-            "wisp.sage_append.threads": null,
-            "wisp.sage_append.timeout": null, 
-            "wisp.sage_append.heapRam": null, 
-            "wisp.sage_append.additionalParameters": null, 
-            "wisp.splitPonByChromosome.memory": null,
-            "wisp.splitPonByChromosome.timeout": null,
-
-            "wisp.tumour_bai": {
-                        "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
-                            "externalIds": [
-                                {
-                                    "id": "TEST",
-                                    "provider": "TEST"
-                                }
-                            ]
-                        },
-                        "type": "EXTERNAL"
-            },
-            "wisp.tumour_bam": {
+                    }
+                }
+            ],
+            "wisp.normal_redux_dir": null,
+            "wisp.normal_sample_id": null,
+            "wisp.outputFileNamePrefix": "wisp_test_01_wg",
+            "wisp.pack_primary.cores": null,
+            "wisp.pack_primary.jobMemory": null,
+            "wisp.pack_primary.modules": null,
+            "wisp.pack_primary.timeout": null,
+            "wisp.pave_somatic.cores": null,
+            "wisp.pave_somatic.heapFraction": null,
+            "wisp.pave_somatic.image": null,
+            "wisp.pave_somatic.jobMemory": null,
+            "wisp.pave_somatic.modules": null,
+            "wisp.pave_somatic.timeout": null,
+            "wisp.primary_tarball": null,
+            "wisp.probe_longitudinal.cores": null,
+            "wisp.probe_longitudinal.jobMemory": null,
+            "wisp.probe_longitudinal.modules": null,
+            "wisp.probe_longitudinal.records": null,
+            "wisp.probe_longitudinal.timeout": null,
+            "wisp.probe_normal.cores": null,
+            "wisp.probe_normal.jobMemory": null,
+            "wisp.probe_normal.modules": null,
+            "wisp.probe_normal.records": null,
+            "wisp.probe_normal.timeout": null,
+            "wisp.probe_tumor.cores": null,
+            "wisp.probe_tumor.jobMemory": null,
+            "wisp.probe_tumor.modules": null,
+            "wisp.probe_tumor.records": null,
+            "wisp.probe_tumor.timeout": null,
+            "wisp.purple.cores": null,
+            "wisp.purple.heapFraction": null,
+            "wisp.purple.image": null,
+            "wisp.purple.jobMemory": null,
+            "wisp.purple.modules": null,
+            "wisp.purple.timeout": null,
+            "wisp.redux_longitudinal.cores": null,
+            "wisp.redux_longitudinal.heapFraction": null,
+            "wisp.redux_longitudinal.image": null,
+            "wisp.redux_longitudinal.jobMemory": null,
+            "wisp.redux_longitudinal.modules": null,
+            "wisp.redux_longitudinal.timeout": null,
+            "wisp.redux_normal.cores": null,
+            "wisp.redux_normal.heapFraction": null,
+            "wisp.redux_normal.image": null,
+            "wisp.redux_normal.jobMemory": null,
+            "wisp.redux_normal.modules": null,
+            "wisp.redux_normal.timeout": null,
+            "wisp.redux_tumor.cores": null,
+            "wisp.redux_tumor.heapFraction": null,
+            "wisp.redux_tumor.image": null,
+            "wisp.redux_tumor.jobMemory": null,
+            "wisp.redux_tumor.modules": null,
+            "wisp.redux_tumor.timeout": null,
+            "wisp.ref_data_dir": null,
+            "wisp.resolve_resources.cores": null,
+            "wisp.resolve_resources.jobMemory": null,
+            "wisp.resolve_resources.modules": null,
+            "wisp.resolve_resources.timeout": null,
+            "wisp.sage_append.cores": null,
+            "wisp.sage_append.heapFraction": null,
+            "wisp.sage_append.image": null,
+            "wisp.sage_append.jobMemory": null,
+            "wisp.sage_append.modules": null,
+            "wisp.sage_append.timeout": null,
+            "wisp.sage_somatic.cores": null,
+            "wisp.sage_somatic.heapFraction": null,
+            "wisp.sage_somatic.image": null,
+            "wisp.sage_somatic.jobMemory": null,
+            "wisp.sage_somatic.modules": null,
+            "wisp.sage_somatic.timeout": null,
+            "wisp.sequencing_platform": null,
+            "wisp.stage_longitudinal.cores": null,
+            "wisp.stage_longitudinal.jobMemory": null,
+            "wisp.stage_longitudinal.modules": null,
+            "wisp.stage_longitudinal.timeout": null,
+            "wisp.stage_normal.cores": null,
+            "wisp.stage_normal.jobMemory": null,
+            "wisp.stage_normal.modules": null,
+            "wisp.stage_normal.timeout": null,
+            "wisp.stage_tumor.cores": null,
+            "wisp.stage_tumor.jobMemory": null,
+            "wisp.stage_tumor.modules": null,
+            "wisp.stage_tumor.timeout": null,
+            "wisp.tumor_alignments": [
+                {
+                    "aln": {
                         "contents": {
                             "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
                             "externalIds": [
@@ -205,51 +162,70 @@
                             ]
                         },
                         "type": "EXTERNAL"
-            }
+                    },
+                    "idx": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    }
+                }
+            ],
+            "wisp.tumor_redux_dir": null,
+            "wisp.tumor_sample_id": null,
+            "wisp.use_copy_number": null,
+            "wisp.validate_inputs.cores": null,
+            "wisp.validate_inputs.jobMemory": null,
+            "wisp.validate_inputs.modules": null,
+            "wisp.validate_inputs.timeout": null,
+            "wisp.wisp_purity.cores": null,
+            "wisp.wisp_purity.heapFraction": null,
+            "wisp.wisp_purity.image": null,
+            "wisp.wisp_purity.jobMemory": null,
+            "wisp.wisp_purity.modules": null,
+            "wisp.wisp_purity.timeout": null
         },
-        "description": "wisp workflow test_01",
+        "description": "wisp test_01 WG: primary only, produces the tarball a PE run consumes",
         "engineArguments": {
-           "write_to_cache": false,
-           "read_from_cache": false
+            "write_to_cache": false,
+            "read_from_cache": false
         },
-        "id": "wisp_test_01",
+        "id": "wisp_test_01_wg",
         "metadata": {
-            "wisp.wisp_directory": {
+            "wisp.validation_log": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_summary": {
+            "wisp.primary_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_somatic_variants": {
+            "wisp.primary_somatic_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
             },
-            "wisp.sage_plasma_vcf": {
+            "wisp.primary_purity": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
-                    }
-                ],
-                "type": "ALL"
-            },
-            "wisp.sage_plasma_vcf_index": {
-                "contents": [
-                    {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -259,7 +235,722 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_01.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_01_wg.metrics",
+                "type": "script"
+            }
+        ]
+    },
+    {
+        "arguments": {
+            "wisp.amber_primary.cores": null,
+            "wisp.amber_primary.heapFraction": null,
+            "wisp.amber_primary.image": null,
+            "wisp.amber_primary.jobMemory": null,
+            "wisp.amber_primary.modules": null,
+            "wisp.amber_primary.timeout": null,
+            "wisp.amber_primary.tumor_min_depth": null,
+            "wisp.cobalt_longitudinal.cores": null,
+            "wisp.cobalt_longitudinal.heapFraction": null,
+            "wisp.cobalt_longitudinal.image": null,
+            "wisp.cobalt_longitudinal.jobMemory": null,
+            "wisp.cobalt_longitudinal.modules": null,
+            "wisp.cobalt_longitudinal.normal_bai": null,
+            "wisp.cobalt_longitudinal.normal_bam": null,
+            "wisp.cobalt_longitudinal.normal_id": null,
+            "wisp.cobalt_longitudinal.timeout": null,
+            "wisp.cobalt_primary.cores": null,
+            "wisp.cobalt_primary.diploid_bed": null,
+            "wisp.cobalt_primary.heapFraction": null,
+            "wisp.cobalt_primary.image": null,
+            "wisp.cobalt_primary.jobMemory": null,
+            "wisp.cobalt_primary.modules": null,
+            "wisp.cobalt_primary.timeout": null,
+            "wisp.container_binds": null,
+            "wisp.donor_id": "test_01",
+            "wisp.extract_primary.cores": null,
+            "wisp.extract_primary.jobMemory": null,
+            "wisp.extract_primary.modules": null,
+            "wisp.extract_primary.timeout": null,
+            "wisp.genome_fasta": null,
+            "wisp.hmftools_log_level": null,
+            "wisp.images_dir": null,
+            "wisp.longitudinal_alignments": [
+                {
+                    "aln": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    },
+                    "idx": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    }
+                }
+            ],
+            "wisp.longitudinal_redux_dir": null,
+            "wisp.longitudinal_sample_id": null,
+            "wisp.longitudinal_sequencing_platform": null,
+            "wisp.mode": "PE",
+            "wisp.normal_alignments": null,
+            "wisp.normal_redux_dir": null,
+            "wisp.normal_sample_id": null,
+            "wisp.outputFileNamePrefix": "wisp_test_02_pe",
+            "wisp.pack_primary.cores": null,
+            "wisp.pack_primary.jobMemory": null,
+            "wisp.pack_primary.modules": null,
+            "wisp.pack_primary.timeout": null,
+            "wisp.pave_somatic.cores": null,
+            "wisp.pave_somatic.heapFraction": null,
+            "wisp.pave_somatic.image": null,
+            "wisp.pave_somatic.jobMemory": null,
+            "wisp.pave_somatic.modules": null,
+            "wisp.pave_somatic.timeout": null,
+            "wisp.primary_tarball": {
+                "contents": {
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P.primary.tar.gz",
+                    "externalIds": [
+                        {
+                            "id": "TEST",
+                            "provider": "TEST"
+                        }
+                    ]
+                },
+                "type": "EXTERNAL"
+            },
+            "wisp.probe_longitudinal.cores": null,
+            "wisp.probe_longitudinal.jobMemory": null,
+            "wisp.probe_longitudinal.modules": null,
+            "wisp.probe_longitudinal.records": null,
+            "wisp.probe_longitudinal.timeout": null,
+            "wisp.probe_normal.cores": null,
+            "wisp.probe_normal.jobMemory": null,
+            "wisp.probe_normal.modules": null,
+            "wisp.probe_normal.records": null,
+            "wisp.probe_normal.timeout": null,
+            "wisp.probe_tumor.cores": null,
+            "wisp.probe_tumor.jobMemory": null,
+            "wisp.probe_tumor.modules": null,
+            "wisp.probe_tumor.records": null,
+            "wisp.probe_tumor.timeout": null,
+            "wisp.purple.cores": null,
+            "wisp.purple.heapFraction": null,
+            "wisp.purple.image": null,
+            "wisp.purple.jobMemory": null,
+            "wisp.purple.modules": null,
+            "wisp.purple.timeout": null,
+            "wisp.redux_longitudinal.cores": null,
+            "wisp.redux_longitudinal.heapFraction": null,
+            "wisp.redux_longitudinal.image": null,
+            "wisp.redux_longitudinal.jobMemory": null,
+            "wisp.redux_longitudinal.modules": null,
+            "wisp.redux_longitudinal.timeout": null,
+            "wisp.redux_normal.cores": null,
+            "wisp.redux_normal.heapFraction": null,
+            "wisp.redux_normal.image": null,
+            "wisp.redux_normal.jobMemory": null,
+            "wisp.redux_normal.modules": null,
+            "wisp.redux_normal.timeout": null,
+            "wisp.redux_tumor.cores": null,
+            "wisp.redux_tumor.heapFraction": null,
+            "wisp.redux_tumor.image": null,
+            "wisp.redux_tumor.jobMemory": null,
+            "wisp.redux_tumor.modules": null,
+            "wisp.redux_tumor.timeout": null,
+            "wisp.ref_data_dir": null,
+            "wisp.resolve_resources.cores": null,
+            "wisp.resolve_resources.jobMemory": null,
+            "wisp.resolve_resources.modules": null,
+            "wisp.resolve_resources.timeout": null,
+            "wisp.sage_append.cores": null,
+            "wisp.sage_append.heapFraction": null,
+            "wisp.sage_append.image": null,
+            "wisp.sage_append.jobMemory": null,
+            "wisp.sage_append.modules": null,
+            "wisp.sage_append.timeout": null,
+            "wisp.sage_somatic.cores": null,
+            "wisp.sage_somatic.heapFraction": null,
+            "wisp.sage_somatic.image": null,
+            "wisp.sage_somatic.jobMemory": null,
+            "wisp.sage_somatic.modules": null,
+            "wisp.sage_somatic.timeout": null,
+            "wisp.sequencing_platform": null,
+            "wisp.stage_longitudinal.cores": null,
+            "wisp.stage_longitudinal.jobMemory": null,
+            "wisp.stage_longitudinal.modules": null,
+            "wisp.stage_longitudinal.timeout": null,
+            "wisp.stage_normal.cores": null,
+            "wisp.stage_normal.jobMemory": null,
+            "wisp.stage_normal.modules": null,
+            "wisp.stage_normal.timeout": null,
+            "wisp.stage_tumor.cores": null,
+            "wisp.stage_tumor.jobMemory": null,
+            "wisp.stage_tumor.modules": null,
+            "wisp.stage_tumor.timeout": null,
+            "wisp.tumor_alignments": null,
+            "wisp.tumor_redux_dir": null,
+            "wisp.tumor_sample_id": null,
+            "wisp.use_copy_number": null,
+            "wisp.validate_inputs.cores": null,
+            "wisp.validate_inputs.jobMemory": null,
+            "wisp.validate_inputs.modules": null,
+            "wisp.validate_inputs.timeout": null,
+            "wisp.wisp_purity.cores": null,
+            "wisp.wisp_purity.heapFraction": null,
+            "wisp.wisp_purity.image": null,
+            "wisp.wisp_purity.jobMemory": null,
+            "wisp.wisp_purity.modules": null,
+            "wisp.wisp_purity.timeout": null
+        },
+        "description": "wisp test_02 PE: a longitudinal sample against an existing primary",
+        "engineArguments": {
+            "write_to_cache": false,
+            "read_from_cache": false
+        },
+        "id": "wisp_test_02_pe",
+        "metadata": {
+            "wisp.validation_log": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.longitudinal_append_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            }
+        },
+        "validators": [
+            {
+                "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
+                "metrics_compare": "@CHECKOUT@/tests/compare.sh",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_02_pe.metrics",
+                "type": "script"
+            }
+        ]
+    },
+    {
+        "arguments": {
+            "wisp.amber_primary.cores": null,
+            "wisp.amber_primary.heapFraction": null,
+            "wisp.amber_primary.image": null,
+            "wisp.amber_primary.jobMemory": null,
+            "wisp.amber_primary.modules": null,
+            "wisp.amber_primary.timeout": null,
+            "wisp.amber_primary.tumor_min_depth": null,
+            "wisp.cobalt_longitudinal.cores": null,
+            "wisp.cobalt_longitudinal.heapFraction": null,
+            "wisp.cobalt_longitudinal.image": null,
+            "wisp.cobalt_longitudinal.jobMemory": null,
+            "wisp.cobalt_longitudinal.modules": null,
+            "wisp.cobalt_longitudinal.normal_bai": null,
+            "wisp.cobalt_longitudinal.normal_bam": null,
+            "wisp.cobalt_longitudinal.normal_id": null,
+            "wisp.cobalt_longitudinal.timeout": null,
+            "wisp.cobalt_primary.cores": null,
+            "wisp.cobalt_primary.diploid_bed": null,
+            "wisp.cobalt_primary.heapFraction": null,
+            "wisp.cobalt_primary.image": null,
+            "wisp.cobalt_primary.jobMemory": null,
+            "wisp.cobalt_primary.modules": null,
+            "wisp.cobalt_primary.timeout": null,
+            "wisp.container_binds": null,
+            "wisp.donor_id": "test_01",
+            "wisp.extract_primary.cores": null,
+            "wisp.extract_primary.jobMemory": null,
+            "wisp.extract_primary.modules": null,
+            "wisp.extract_primary.timeout": null,
+            "wisp.genome_fasta": null,
+            "wisp.hmftools_log_level": null,
+            "wisp.images_dir": null,
+            "wisp.longitudinal_alignments": null,
+            "wisp.longitudinal_redux_dir": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T.redux",
+            "wisp.longitudinal_sample_id": null,
+            "wisp.longitudinal_sequencing_platform": null,
+            "wisp.mode": "PE",
+            "wisp.normal_alignments": null,
+            "wisp.normal_redux_dir": null,
+            "wisp.normal_sample_id": null,
+            "wisp.outputFileNamePrefix": "wisp_test_03_pe_redux_dir_snv_only",
+            "wisp.pack_primary.cores": null,
+            "wisp.pack_primary.jobMemory": null,
+            "wisp.pack_primary.modules": null,
+            "wisp.pack_primary.timeout": null,
+            "wisp.pave_somatic.cores": null,
+            "wisp.pave_somatic.heapFraction": null,
+            "wisp.pave_somatic.image": null,
+            "wisp.pave_somatic.jobMemory": null,
+            "wisp.pave_somatic.modules": null,
+            "wisp.pave_somatic.timeout": null,
+            "wisp.primary_tarball": {
+                "contents": {
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P.primary.tar.gz",
+                    "externalIds": [
+                        {
+                            "id": "TEST",
+                            "provider": "TEST"
+                        }
+                    ]
+                },
+                "type": "EXTERNAL"
+            },
+            "wisp.probe_longitudinal.cores": null,
+            "wisp.probe_longitudinal.jobMemory": null,
+            "wisp.probe_longitudinal.modules": null,
+            "wisp.probe_longitudinal.records": null,
+            "wisp.probe_longitudinal.timeout": null,
+            "wisp.probe_normal.cores": null,
+            "wisp.probe_normal.jobMemory": null,
+            "wisp.probe_normal.modules": null,
+            "wisp.probe_normal.records": null,
+            "wisp.probe_normal.timeout": null,
+            "wisp.probe_tumor.cores": null,
+            "wisp.probe_tumor.jobMemory": null,
+            "wisp.probe_tumor.modules": null,
+            "wisp.probe_tumor.records": null,
+            "wisp.probe_tumor.timeout": null,
+            "wisp.purple.cores": null,
+            "wisp.purple.heapFraction": null,
+            "wisp.purple.image": null,
+            "wisp.purple.jobMemory": null,
+            "wisp.purple.modules": null,
+            "wisp.purple.timeout": null,
+            "wisp.redux_longitudinal.cores": null,
+            "wisp.redux_longitudinal.heapFraction": null,
+            "wisp.redux_longitudinal.image": null,
+            "wisp.redux_longitudinal.jobMemory": null,
+            "wisp.redux_longitudinal.modules": null,
+            "wisp.redux_longitudinal.timeout": null,
+            "wisp.redux_normal.cores": null,
+            "wisp.redux_normal.heapFraction": null,
+            "wisp.redux_normal.image": null,
+            "wisp.redux_normal.jobMemory": null,
+            "wisp.redux_normal.modules": null,
+            "wisp.redux_normal.timeout": null,
+            "wisp.redux_tumor.cores": null,
+            "wisp.redux_tumor.heapFraction": null,
+            "wisp.redux_tumor.image": null,
+            "wisp.redux_tumor.jobMemory": null,
+            "wisp.redux_tumor.modules": null,
+            "wisp.redux_tumor.timeout": null,
+            "wisp.ref_data_dir": null,
+            "wisp.resolve_resources.cores": null,
+            "wisp.resolve_resources.jobMemory": null,
+            "wisp.resolve_resources.modules": null,
+            "wisp.resolve_resources.timeout": null,
+            "wisp.sage_append.cores": null,
+            "wisp.sage_append.heapFraction": null,
+            "wisp.sage_append.image": null,
+            "wisp.sage_append.jobMemory": null,
+            "wisp.sage_append.modules": null,
+            "wisp.sage_append.timeout": null,
+            "wisp.sage_somatic.cores": null,
+            "wisp.sage_somatic.heapFraction": null,
+            "wisp.sage_somatic.image": null,
+            "wisp.sage_somatic.jobMemory": null,
+            "wisp.sage_somatic.modules": null,
+            "wisp.sage_somatic.timeout": null,
+            "wisp.sequencing_platform": null,
+            "wisp.stage_longitudinal.cores": null,
+            "wisp.stage_longitudinal.jobMemory": null,
+            "wisp.stage_longitudinal.modules": null,
+            "wisp.stage_longitudinal.timeout": null,
+            "wisp.stage_normal.cores": null,
+            "wisp.stage_normal.jobMemory": null,
+            "wisp.stage_normal.modules": null,
+            "wisp.stage_normal.timeout": null,
+            "wisp.stage_tumor.cores": null,
+            "wisp.stage_tumor.jobMemory": null,
+            "wisp.stage_tumor.modules": null,
+            "wisp.stage_tumor.timeout": null,
+            "wisp.tumor_alignments": null,
+            "wisp.tumor_redux_dir": null,
+            "wisp.tumor_sample_id": null,
+            "wisp.use_copy_number": false,
+            "wisp.validate_inputs.cores": null,
+            "wisp.validate_inputs.jobMemory": null,
+            "wisp.validate_inputs.modules": null,
+            "wisp.validate_inputs.timeout": null,
+            "wisp.wisp_purity.cores": null,
+            "wisp.wisp_purity.heapFraction": null,
+            "wisp.wisp_purity.image": null,
+            "wisp.wisp_purity.jobMemory": null,
+            "wisp.wisp_purity.modules": null,
+            "wisp.wisp_purity.timeout": null
+        },
+        "description": "wisp test_03 PE: longitudinal as a REDUX directory, somatic variants only",
+        "engineArguments": {
+            "write_to_cache": false,
+            "read_from_cache": false
+        },
+        "id": "wisp_test_03_pe_redux_dir_snv_only",
+        "metadata": {
+            "wisp.validation_log": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.longitudinal_append_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            }
+        },
+        "validators": [
+            {
+                "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
+                "metrics_compare": "@CHECKOUT@/tests/compare.sh",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_03_pe_redux_dir_snv_only.metrics",
+                "type": "script"
+            }
+        ]
+    },
+    {
+        "arguments": {
+            "wisp.amber_primary.cores": null,
+            "wisp.amber_primary.heapFraction": null,
+            "wisp.amber_primary.image": null,
+            "wisp.amber_primary.jobMemory": null,
+            "wisp.amber_primary.modules": null,
+            "wisp.amber_primary.timeout": null,
+            "wisp.amber_primary.tumor_min_depth": null,
+            "wisp.cobalt_longitudinal.cores": null,
+            "wisp.cobalt_longitudinal.heapFraction": null,
+            "wisp.cobalt_longitudinal.image": null,
+            "wisp.cobalt_longitudinal.jobMemory": null,
+            "wisp.cobalt_longitudinal.modules": null,
+            "wisp.cobalt_longitudinal.normal_bai": null,
+            "wisp.cobalt_longitudinal.normal_bam": null,
+            "wisp.cobalt_longitudinal.normal_id": null,
+            "wisp.cobalt_longitudinal.timeout": null,
+            "wisp.cobalt_primary.cores": null,
+            "wisp.cobalt_primary.diploid_bed": null,
+            "wisp.cobalt_primary.heapFraction": null,
+            "wisp.cobalt_primary.image": null,
+            "wisp.cobalt_primary.jobMemory": null,
+            "wisp.cobalt_primary.modules": null,
+            "wisp.cobalt_primary.timeout": null,
+            "wisp.container_binds": null,
+            "wisp.donor_id": "test_01",
+            "wisp.extract_primary.cores": null,
+            "wisp.extract_primary.jobMemory": null,
+            "wisp.extract_primary.modules": null,
+            "wisp.extract_primary.timeout": null,
+            "wisp.genome_fasta": null,
+            "wisp.hmftools_log_level": null,
+            "wisp.images_dir": null,
+            "wisp.longitudinal_alignments": [
+                {
+                    "aln": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    },
+                    "idx": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    }
+                }
+            ],
+            "wisp.longitudinal_redux_dir": null,
+            "wisp.longitudinal_sample_id": null,
+            "wisp.longitudinal_sequencing_platform": null,
+            "wisp.mode": "WG_PE",
+            "wisp.normal_alignments": [
+                {
+                    "aln": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    },
+                    "idx": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    }
+                }
+            ],
+            "wisp.normal_redux_dir": null,
+            "wisp.normal_sample_id": null,
+            "wisp.outputFileNamePrefix": "wisp_test_04_wg_pe",
+            "wisp.pack_primary.cores": null,
+            "wisp.pack_primary.jobMemory": null,
+            "wisp.pack_primary.modules": null,
+            "wisp.pack_primary.timeout": null,
+            "wisp.pave_somatic.cores": null,
+            "wisp.pave_somatic.heapFraction": null,
+            "wisp.pave_somatic.image": null,
+            "wisp.pave_somatic.jobMemory": null,
+            "wisp.pave_somatic.modules": null,
+            "wisp.pave_somatic.timeout": null,
+            "wisp.primary_tarball": null,
+            "wisp.probe_longitudinal.cores": null,
+            "wisp.probe_longitudinal.jobMemory": null,
+            "wisp.probe_longitudinal.modules": null,
+            "wisp.probe_longitudinal.records": null,
+            "wisp.probe_longitudinal.timeout": null,
+            "wisp.probe_normal.cores": null,
+            "wisp.probe_normal.jobMemory": null,
+            "wisp.probe_normal.modules": null,
+            "wisp.probe_normal.records": null,
+            "wisp.probe_normal.timeout": null,
+            "wisp.probe_tumor.cores": null,
+            "wisp.probe_tumor.jobMemory": null,
+            "wisp.probe_tumor.modules": null,
+            "wisp.probe_tumor.records": null,
+            "wisp.probe_tumor.timeout": null,
+            "wisp.purple.cores": null,
+            "wisp.purple.heapFraction": null,
+            "wisp.purple.image": null,
+            "wisp.purple.jobMemory": null,
+            "wisp.purple.modules": null,
+            "wisp.purple.timeout": null,
+            "wisp.redux_longitudinal.cores": null,
+            "wisp.redux_longitudinal.heapFraction": null,
+            "wisp.redux_longitudinal.image": null,
+            "wisp.redux_longitudinal.jobMemory": null,
+            "wisp.redux_longitudinal.modules": null,
+            "wisp.redux_longitudinal.timeout": null,
+            "wisp.redux_normal.cores": null,
+            "wisp.redux_normal.heapFraction": null,
+            "wisp.redux_normal.image": null,
+            "wisp.redux_normal.jobMemory": null,
+            "wisp.redux_normal.modules": null,
+            "wisp.redux_normal.timeout": null,
+            "wisp.redux_tumor.cores": null,
+            "wisp.redux_tumor.heapFraction": null,
+            "wisp.redux_tumor.image": null,
+            "wisp.redux_tumor.jobMemory": null,
+            "wisp.redux_tumor.modules": null,
+            "wisp.redux_tumor.timeout": null,
+            "wisp.ref_data_dir": null,
+            "wisp.resolve_resources.cores": null,
+            "wisp.resolve_resources.jobMemory": null,
+            "wisp.resolve_resources.modules": null,
+            "wisp.resolve_resources.timeout": null,
+            "wisp.sage_append.cores": null,
+            "wisp.sage_append.heapFraction": null,
+            "wisp.sage_append.image": null,
+            "wisp.sage_append.jobMemory": null,
+            "wisp.sage_append.modules": null,
+            "wisp.sage_append.timeout": null,
+            "wisp.sage_somatic.cores": null,
+            "wisp.sage_somatic.heapFraction": null,
+            "wisp.sage_somatic.image": null,
+            "wisp.sage_somatic.jobMemory": null,
+            "wisp.sage_somatic.modules": null,
+            "wisp.sage_somatic.timeout": null,
+            "wisp.sequencing_platform": null,
+            "wisp.stage_longitudinal.cores": null,
+            "wisp.stage_longitudinal.jobMemory": null,
+            "wisp.stage_longitudinal.modules": null,
+            "wisp.stage_longitudinal.timeout": null,
+            "wisp.stage_normal.cores": null,
+            "wisp.stage_normal.jobMemory": null,
+            "wisp.stage_normal.modules": null,
+            "wisp.stage_normal.timeout": null,
+            "wisp.stage_tumor.cores": null,
+            "wisp.stage_tumor.jobMemory": null,
+            "wisp.stage_tumor.modules": null,
+            "wisp.stage_tumor.timeout": null,
+            "wisp.tumor_alignments": [
+                {
+                    "aln": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    },
+                    "idx": {
+                        "contents": {
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "externalIds": [
+                                {
+                                    "id": "TEST",
+                                    "provider": "TEST"
+                                }
+                            ]
+                        },
+                        "type": "EXTERNAL"
+                    }
+                }
+            ],
+            "wisp.tumor_redux_dir": null,
+            "wisp.tumor_sample_id": null,
+            "wisp.use_copy_number": null,
+            "wisp.validate_inputs.cores": null,
+            "wisp.validate_inputs.jobMemory": null,
+            "wisp.validate_inputs.modules": null,
+            "wisp.validate_inputs.timeout": null,
+            "wisp.wisp_purity.cores": null,
+            "wisp.wisp_purity.heapFraction": null,
+            "wisp.wisp_purity.image": null,
+            "wisp.wisp_purity.jobMemory": null,
+            "wisp.wisp_purity.modules": null,
+            "wisp.wisp_purity.timeout": null
+        },
+        "description": "wisp test_04 WG_PE: both stages in one run",
+        "engineArguments": {
+            "write_to_cache": false,
+            "read_from_cache": false
+        },
+        "id": "wisp_test_04_wg_pe",
+        "metadata": {
+            "wisp.validation_log": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_purity": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.longitudinal_append_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            }
+        },
+        "validators": [
+            {
+                "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
+                "metrics_compare": "@CHECKOUT@/tests/compare.sh",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_04_wg_pe.metrics",
                 "type": "script"
             }
         ]

@@ -1,256 +1,996 @@
 ## Commands
-This section lists command(s) run by WORKFLOW workflow
+This section lists command(s) run by wisp workflow
 
-* Running WORKFLOW
-
-
-```
-    set -euo pipefail
-
-    if [ -f "~{inputBam}" ]; then
-      gatk --java-options "-Xmx~{heapRam}g" GetSampleName -R ~{refFasta} -I ~{inputBam} -O input_name.txt -encode
-    fi
-
-    cat input_name.txt
-```
-```
-    set -euo pipefail
-    
-    # Extract just this chromosome from PON
-    bcftools view -r ~{chromosome} ~{PON} -O z -o pon.~{chromosome}.vcf.gz
-    tabix -p vcf pon.~{chromosome}.vcf.gz
-```
-```
-    set -euo pipefail
-
-    mkdir ~{file_prefix}.amber
-    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
-
-    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/amber.jar com.hartwig.hmftools.amber.AmberApplication \
-      -reference ~{normal_name} -reference_bam ~{normal_bam} \
-      -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
-      -output_dir ~{file_prefix}.amber/ \
-      -loci ~{PON} \
-      -ref_genome_version ${genome_version} \
-      -min_mapping_quality ~{min_mapping_quality} \
-      -min_base_quality ~{min_base_quality} \
-      ~{additionalParameters}
-
-    zip -r ~{file_prefix}.amber.zip ~{file_prefix}.amber/
+* Running wisp
 
 ```
-```
-    set -euo pipefail
+        set -euo pipefail
 
-    mkdir -p ~{tumour_name}.amber
-    mkdir -p temp
+        printf '%s' "~{images_dir}"   > images_dir.txt
+        printf '%s' "~{ref_data_dir}" > ref_data_dir.txt
+        printf '%s' "~{genome_fasta}" > genome_fasta.txt
 
-    # Unzip all chromosome results
-    for zip_file in ~{sep=' ' chr_zips}; do
-      unzip -o ${zip_file} -d temp/
-    done
+        # Where the resources really live, as well as where they are named. A resource root
+        # reached through a symlink has to be bound at both paths: the tools open the name they
+        # were given, and the kernel resolves it to the target.
+        {
+            for d in "$(cat images_dir.txt)" "$(cat ref_data_dir.txt)" "$(dirname "$(cat genome_fasta.txt)")"; do
+                printf '%s\n' "${d}"
+                realpath "${d}" 2>/dev/null || true
+            done
+        } | sort -u | grep -v '^$' > binds.txt
 
-    first_baf=$(ls temp/*/*.amber.baf.tsv.gz | sort -V | sed -n '1p')
-    zcat "$first_baf" | sed -n '1p' > temp_header.txt
-    zcat temp/*/*.amber.baf.tsv.gz | grep -v "^chromosome" | sort -k1,1V -k2,2n > temp_data.txt
-    cat temp_header.txt temp_data.txt | gzip > ~{tumour_name}.amber/~{tumour_name}.amber.baf.tsv.gz
-    rm temp_header.txt temp_data.txt
-
-    first_pcf=$(ls temp/*/*.amber.baf.pcf | sort -V | sed -n '1p')
-    sed -n '1p' "$first_pcf" > temp_header_pcf.txt
-    tail -q -n +2 temp/*/*.amber.baf.pcf | sort -k2,2V -k4,4n > temp_data_pcf.txt
-    cat temp_header_pcf.txt temp_data_pcf.txt > ~{tumour_name}.amber/~{tumour_name}.amber.baf.pcf
-    rm temp_header_pcf.txt temp_data_pcf.txt
-
-    cp $(find temp -name "*.amber.qc" -type f | sed -n '1p') ~{tumour_name}.amber/~{tumour_name}.amber.qc
-
-    if ls temp/*/*.amber.contamination.tsv 1> /dev/null 2>&1; then
-      {
-        head -n1 $(ls temp/*/*.amber.contamination.tsv | sort -V | head -n1)
-        tail -q -n +2 temp/*/*.amber.contamination.tsv | sort -k1,1V -k2,2n
-      } > ~{tumour_name}.amber/~{tumour_name}.amber.contamination.tsv
-    fi
-
-    if ls temp/*/*.amber.contamination.vcf.gz 1> /dev/null 2>&1; then
-      bcftools concat $(ls temp/*/*.amber.contamination.vcf.gz | sort -V) | \
-        bcftools sort -O z -o ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
-      tabix -p vcf ~{tumour_name}.amber/~{tumour_name}.amber.contamination.vcf.gz
-    fi
-
-    if ls temp/*/*.amber.homozygousregion.tsv 1> /dev/null 2>&1; then
-      {
-        head -n1 $(ls temp/*/*.amber.homozygousregion.tsv | sort -V | head -n1)
-        tail -q -n +2 temp/*/*.amber.homozygousregion.tsv | sort -k1,1V -k2,2n
-      } > ~{tumour_name}.amber/~{tumour_name}.amber.homozygousregion.tsv
-    fi
-
-    if find temp -name "amber.version" -type f | grep -q .; then
-      cp $(find temp -name "amber.version" -type f | head -n1) ~{tumour_name}.amber/amber.version
-    fi
-
-    zip -r ~{tumour_name}.amber.zip ~{tumour_name}.amber/
+        for f in images_dir.txt ref_data_dir.txt genome_fasta.txt; do
+            value=$(cat "${f}")
+            if [ -z "${value}" ]; then
+                echo "ERROR: ${f%.txt} resolved to nothing; the module that sets it is probably not loaded" >&2
+                exit 1
+            fi
+            echo "${f%.txt}: ${value}" >&2
+        done
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
 
-    mkdir ~{tumour_name}.cobalt
+        dir="~{redux_dir}"
+        [ -d "${dir}" ] || { echo "ERROR: ~{role} redux_dir is not a directory: ${dir}" >&2; exit 1; }
 
-    java -Xmx~{heapRam}G -cp $HMFTOOLS_ROOT/cobalt.jar com.hartwig.hmftools.cobalt.CobaltApplication \
-      -reference ~{normal_name} -reference_bam ~{normal_bam} \
-      -tumor ~{tumour_name} -tumor_bam ~{tumour_bam} \
-      -output_dir ~{tumour_name}.cobalt/ \
-      -gc_profile ~{gcProfile} \
-      -pcf_gamma ~{gamma} \
-      -min_quality ~{min_mapping_quality} \
-      ~{additionalParameters}
+        # CRAM first, as the resolver upstream does, then BAM.
+        wanted="~{default="" sample_id_override}"
+        if [ -n "${wanted}" ]; then
+            for ext in cram bam; do
+                [ -f "${dir}/${wanted}.redux.${ext}" ] && aln="${dir}/${wanted}.redux.${ext}" && break
+            done
+            [ -n "${aln:-}" ] || {
+                echo "ERROR: no ${wanted}.redux.cram or ${wanted}.redux.bam in ${dir}" >&2; exit 1; }
+        else
+            count=$(find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \) | wc -l)
+            if [ "${count}" -ne 1 ]; then
+                echo "ERROR: ~{role} redux_dir holds ${count} *.redux.cram or *.redux.bam files," \
+                     "expected one; name the one to use with the sample id input: ${dir}" >&2
+                exit 1
+            fi
+            aln=$(find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \))
+        fi
 
-    zip -r ~{tumour_name}.cobalt.zip ~{tumour_name}.cobalt/
+        aln_ext="${aln##*.}"
+        case "${aln_ext}" in
+            cram) idx_ext=crai ;;
+            bam)  idx_ext=bai ;;
+        esac
 
+        sample_id=$(basename "${aln}" ".redux.${aln_ext}")
+        echo "${sample_id}" > sample_id.txt
+
+        # The tools resolve every file in the directory by this exact prefix, but they read
+        # the sample out of the alignment header, so the two disagreeing produces a run that
+        # looks for files that are not there. Refused here rather than several hours in.
+        sm=$(samtools view -H "${aln}" | awk -F'\t' '$1 == "@RG" {
+                 for (i = 2; i <= NF; i++) if ($i ~ /^SM:/) { print substr($i, 4); }
+             }' | sort -u)
+        if [ "${sm}" != "${sample_id}" ]; then
+            echo "ERROR: ~{role} redux_dir file prefix '${sample_id}' does not match the" \
+                 "read-group SM tag '${sm}'; regenerate the directory with -sample ${sm}," \
+                 "or rename its files to match" >&2
+            exit 1
+        fi
+
+        # The three tables SAGE reads. Their absence would silently switch it to skipping
+        # recalibration and jitter fitting, so a directory without them is refused.
+        mkdir -p redux
+        ln -s "${aln}" "redux/${sample_id}.redux.${aln_ext}"
+        for suffix in "redux.${aln_ext}.${idx_ext}" redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+            src="${dir}/${sample_id}.${suffix}"
+            [ -f "${src}" ] || { echo "ERROR: ${sample_id}.${suffix} is missing from ${dir}" >&2; exit 1; }
+            ln -s "${src}" "redux/${sample_id}.${suffix}"
+        done
+
+        # Whatever else REDUX wrote is carried along, since PURPLE reads the microsatellite
+        # tables and none of it is large.
+        for suffix in redux.duplicate_freq.tsv redux.msi_prediction.tsv redux.repeat.tsv.gz; do
+            src="${dir}/${sample_id}.${suffix}"
+            [ -f "${src}" ] && ln -s "${src}" "redux/${sample_id}.${suffix}"
+        done
+
+        echo "~{role}: taking ${sample_id} from ${dir}, REDUX will not run for it" >&2
 ```
 ```
-    mkdir -p ~{output_name}
-    unzip -o ~{primary_zip} -d ~{output_name}/
-    unzip -o ~{plasma_zip} -d ~{output_name}/
-    # Flatten if nested
-    find ~{output_name} -mindepth 2 -type f -exec mv {} ~{output_name}/ \;
-    find ~{output_name} -mindepth 1 -type d -empty -delete
-    zip -r ~{output_name}.zip ~{output_name}/
+        set -euo pipefail
+
+        # Sample id and platform come from the read groups, which must agree across the
+        # inputs: they are merged into one sample downstream.
+        sms=""
+        pls=""
+        while IFS= read -r aln; do
+            sm=$(samtools view -H "${aln}" | awk -F'\t' '$1 == "@RG" {
+                     for (i = 2; i <= NF; i++) if ($i ~ /^SM:/) { print substr($i, 4); }
+                 }' | sort -u)
+            pl=$(samtools view -H "${aln}" | awk -F'\t' '$1 == "@RG" {
+                     for (i = 2; i <= NF; i++) if ($i ~ /^PL:/) { print toupper(substr($i, 4)); }
+                 }' | sort -u)
+            sms="${sms}${sm}"$'\n'
+            pls="${pls}${pl}"$'\n'
+        done < ~{write_lines(alignments)}
+
+        sm_unique=$(printf '%s' "${sms}" | grep -v '^$' | sort -u)
+        pl_unique=$(printf '%s' "${pls}" | grep -v '^$' | sort -u)
+
+        if [ "$(printf '%s\n' "${sm_unique}" | grep -c .)" -ne 1 ]; then
+            echo "ERROR: ~{role} alignments do not agree on one read-group SM tag:" >&2
+            printf '  %s\n' ${sm_unique} >&2
+            exit 1
+        fi
+
+        # Tested as a string rather than through a file: `echo` of an empty override still
+        # writes a newline, which reads back as a file with content and would override the
+        # sample id with nothing.
+        override="~{default="" sample_id_override}"
+        if [ -n "${override}" ]; then
+            if [ "${override}" != "${sm_unique}" ]; then
+                echo "NOTE: ~{role} sample id overridden: alignments report ${sm_unique}," \
+                     "using ${override}" >&2
+            fi
+            printf '%s' "${override}" > sample_id.txt
+        else
+            printf '%s' "${sm_unique}" > sample_id.txt
+        fi
+
+        # An empty or unrecognised PL is left for validate_inputs to report, together with
+        # whatever the other samples said, rather than failed here one sample at a time.
+        case "${pl_unique}" in
+            ILLUMINA) echo ILLUMINA ;;
+            ULTIMA)   echo ULTIMA ;;
+            SBX|ELEMENT) echo SBX ;;
+            *)        echo "UNKNOWN:${pl_unique}" ;;
+        esac | head -1 > platform.txt
+
+        # The tools address contigs by their position in the alignment header, so the
+        # header order is what has to match the reference, not merely the contig names.
+        samtools view -H "$(head -1 ~{write_lines(alignments)})" \
+            | awk -F'\t' '$1 == "@SQ" {
+                  for (i = 2; i <= NF; i++) if ($i ~ /^SN:/) { print substr($i, 4); }
+              }' > contig_names.txt
+
+        # REDUX marks duplicates from the mate CIGAR tag. Reading records rather than the
+        # header, because the tag is per record. An alignment REDUX has already processed is
+        # reported as satisfying the requirement without being read.
+        if ~{if requires_mate_cigar then "true" else "false"}; then
+            found=$(samtools view "$(head -1 ~{write_lines(alignments)})" \
+                    | head -~{records} | grep -c 'MC:Z:' || true)
+            if [ "${found}" -gt 0 ]; then echo true > has_mate_cigar.txt; else echo false > has_mate_cigar.txt; fi
+        else
+            echo true > has_mate_cigar.txt
+        fi
+
+        echo "~{role}: sample_id=$(cat sample_id.txt) platform=$(cat platform.txt)" \
+             "contigs=$(wc -l < contig_names.txt) mate_cigar=$(cat has_mate_cigar.txt)" >&2
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
+        errors=()
 
-    echo $SAGE_ROOT
-    ls -la ${SAGE_ROOT}/
+        mode="~{mode}"
+        case "${mode}" in
+            WG|PE|WG_PE) ;;
+            *) errors+=("mode must be WG, PE or WG_PE, got '${mode}'") ;;
+        esac
 
-    java -Xmx~{heapRam}G -cp $SAGE_ROOT/sage.jar com.hartwig.hmftools.sage.append.SageAppendApplication \
-      -reference ~{reference_name} \
-      -reference_bam ~{reference_bam} \
-      -ref_genome_version 38 \
-      -ref_genome ~{refFasta} \
-      ~{"-driver_gene_panel " + driverGenePanel} \
-      -input_vcf ~{input_vcf} \
-      -output_vcf ~{reference_name}.sage.vcf.gz \
-      -threads ~{threads} \
-      -min_map_quality ~{min_map_quality} \
-      -hard_min_tumor_qual ~{hard_min_tumor_qual} \
-      -hard_min_tumor_raw_alt_support ~{hard_min_tumor_raw_alt_support} \
-      -hard_min_tumor_vaf ~{hard_min_tumor_vaf} \
-      -skip_msi_jitter \
-      ~{additionalParameters}
+        if [ "~{genome_version}" != "38" ]; then
+            errors+=("only GRCh38 is supported, got genome_version '~{genome_version}'")
+        fi
 
-    mkdir -p ~{reference_name}.sage.bqr/
-    mv *.sage.bqr.tsv  ~{reference_name}.sage.bqr/
-    zip -r ~{reference_name}.sage.bqr.zip ~{reference_name}.sage.bqr/
+        # Input combinations. A tumour-only primary is refused rather than degraded: with no
+        # matched normal the somatic call set fills with germline sites and the reported
+        # tumour fraction is large and wrong.
+        # Each sample arrives either as alignments REDUX has still to process, or as a
+        # directory REDUX has already written. Exactly one of the two, so that a run cannot
+        # silently ignore half of what was supplied.
+        check_source() {
+            local role="$1" count="$2" has_dir="$3" required="$4"
+            if [ "${count}" -gt 0 ] && [ "${has_dir}" = "true" ]; then
+                errors+=("${role}: supply either ${role}_alignments or ${role}_redux_dir, not both")
+            elif [ "${count}" -eq 0 ] && [ "${has_dir}" != "true" ] && [ "${required}" = "true" ]; then
+                errors+=("${mode} needs ${role}_alignments or ${role}_redux_dir")
+            elif [ "${count}" -gt 0 ] || [ "${has_dir}" = "true" ]; then
+                [ "${required}" = "true" ] || errors+=("${mode} does not use ${role}_alignments or ${role}_redux_dir")
+            fi
+        }
 
+        primary_required=false
+        longitudinal_required=false
+        case "${mode}" in
+            WG)    primary_required=true ;;
+            PE)    longitudinal_required=true ;;
+            WG_PE) primary_required=true; longitudinal_required=true ;;
+        esac
+
+        check_source tumor "~{tumor_count}" "~{if has_tumor_redux_dir then "true" else "false"}" "${primary_required}"
+        check_source normal "~{normal_count}" "~{if has_normal_redux_dir then "true" else "false"}" "${primary_required}"
+        check_source longitudinal "~{longitudinal_count}" "~{if has_longitudinal_redux_dir then "true" else "false"}" "${longitudinal_required}"
+
+        if [ "${primary_required}" = "true" ] && [ "~{normal_count}" -eq 0 ] \
+           && [ "~{if has_normal_redux_dir then "true" else "false"}" != "true" ]; then
+            errors+=("a tumour-only primary inverts the MRD result rather than degrading it, so a matched normal is required")
+        fi
+
+        if [ "${mode}" = "PE" ]; then
+            ~{if has_primary_tarball then "true" else "false"} || errors+=("PE needs primary_tarball")
+        elif ~{if has_primary_tarball then "true" else "false"}; then
+            errors+=("${mode} computes the primary itself, so primary_tarball must not be supplied")
+        fi
+
+        # Sample ids have to be distinct: the tools address samples by id and several write
+        # into a shared directory keyed by it.
+        dupes=$(sort "~{write_lines(sample_ids)}" | uniq -d)
+        if [ -n "${dupes}" ]; then
+            errors+=("sample ids must be distinct, these repeat: $(echo ${dupes} | tr '\n' ' ')")
+        fi
+        while IFS= read -r sid; do
+            [ -n "${sid}" ] || errors+=("a sample reported an empty sample id")
+        done < "~{write_lines(sample_ids)}"
+
+        # The primary pair has to agree, because AMBER and SAGE are each given the tumour
+        # and the normal in one call and take a single -sequencing_type. The longitudinal
+        # sample is only ever processed on its own, so it is free to differ.
+        check_platform() {
+            local what="$1" value="$2"
+            case "${value}" in
+                ILLUMINA|ULTIMA|SBX) printf '%s' "${value}" ;;
+                '') errors+=("cannot tell the ${what} sequencing platform from the read-group PL tag; set the platform input") ;;
+                *)  errors+=("${what} sequencing platform must be ILLUMINA, ULTIMA or SBX, got '${value}'") ;;
+            esac
+        }
+
+        roles_platforms=$(paste "~{write_lines(roles)}" "~{write_lines(platforms)}")
+
+        primary_reported=$(printf '%s\n' "${roles_platforms}" \
+            | awk -F'\t' '$1 == "tumor" || $1 == "normal" { print $2 }' | sort -u)
+        long_reported=$(printf '%s\n' "${roles_platforms}" \
+            | awk -F'\t' '$1 == "longitudinal" { print $2 }' | sort -u)
+
+        if [ "$(printf '%s\n' "${primary_reported}" | grep -c . || true)" -gt 1 ]; then
+            errors+=("the tumour and the normal report different sequencing platforms ($(echo ${primary_reported} | tr '\n' ' ')); they are called together, so they must agree -- set sequencing_platform")
+            primary_reported=""
+        fi
+
+        primary_override="~{default="" sequencing_platform}"
+        long_override="~{default="" longitudinal_sequencing_platform}"
+
+        primary_platform=""
+        if [ -n "${primary_override}" ]; then
+            primary_platform=$(check_platform "primary" "$(echo "${primary_override}" | tr '[:lower:]' '[:upper:]')")
+        elif [ -n "${primary_reported}" ]; then
+            primary_platform=$(check_platform "primary" "${primary_reported}")
+        fi
+
+        longitudinal_platform=""
+        if [ -n "${long_override}" ]; then
+            longitudinal_platform=$(check_platform "longitudinal" "$(echo "${long_override}" | tr '[:lower:]' '[:upper:]')")
+        elif [ -n "${long_reported}" ]; then
+            longitudinal_platform=$(check_platform "longitudinal" "${long_reported}")
+        fi
+
+        if [ -n "${primary_platform}" ] && [ -n "${longitudinal_platform}" ] \
+           && [ "${primary_platform}" != "${longitudinal_platform}" ]; then
+            echo "NOTE: primary is ${primary_platform} and longitudinal is ${longitudinal_platform}." \
+                 "Each is processed with its own error model; the site list still comes from the primary." >&2
+        fi
+
+        echo "${primary_platform}" > primary_platform.txt
+        echo "${longitudinal_platform}" > longitudinal_platform.txt
+
+        # REDUX marks duplicates from the mate CIGAR tag, so missing tags would produce a
+        # plausible BAM with wrong duplicate flags. The requirement applies only where REDUX
+        # will actually mark duplicates: not to a sample already processed, and not to Ultima,
+        # whose reads are single-ended and therefore have no mates to describe.
+        paste "~{write_lines(roles)}" "~{write_lines(platforms)}" "~{write_lines(mate_cigar_present)}" \
+            | while IFS=$'\t' read -r role role_platform present; do
+                  [ "${present}" != "true" ] || continue
+                  [ "${role_platform}" != "ULTIMA" ] || continue
+                  case "${role}" in
+                      tumor)        [ "~{if has_tumor_redux_dir then "true" else "false"}" = "true" ] && continue ;;
+                      normal)       [ "~{if has_normal_redux_dir then "true" else "false"}" = "true" ] && continue ;;
+                      longitudinal) [ "~{if has_longitudinal_redux_dir then "true" else "false"}" = "true" ] && continue ;;
+                  esac
+                  echo "${role}"
+              done > missing_mc.txt
+        if [ -s missing_mc.txt ]; then
+            errors+=("no mate CIGAR (MC) tags in the alignments for: $(tr '\n' ' ' < missing_mc.txt)-- REDUX needs them to mark duplicates correctly")
+        fi
+
+        # Contig order. The tools pass a contig's index in the alignment header straight to
+        # htsjdk, so a header ordered differently from the reference discards read evidence
+        # without failing.
+        fai="~{genome_fasta}.fai"
+        if [ -r "${fai}" ]; then
+            cut -f1 "${fai}" > reference_contigs.txt
+            # A header that stops early is fine: every contig it does list still sits at the
+            # index the reference gives it, and no read can name an index its own header does
+            # not have. Only disagreement within the header's own length matters, so the
+            # comparison is against that many reference contigs.
+            paste "~{write_lines(roles)}" "~{write_lines(contig_lists)}" \
+                | while IFS=$'\t' read -r role contigs; do
+                      n=$(grep -c . "${contigs}" || true)
+                      head -n "${n}" reference_contigs.txt > reference_prefix.txt
+                      if ! diff -q reference_prefix.txt "${contigs}" >/dev/null 2>&1; then
+                          first=$(diff --unchanged-line-format= --old-line-format='%dn %L' \
+                                       --new-line-format= reference_prefix.txt "${contigs}" \
+                                  | head -1 || true)
+                          echo "${role}|${first}"
+                      fi
+                  done > contig_mismatch.txt
+            while IFS='|' read -r role detail; do
+                [ -n "${role}" ] || continue
+                errors+=("the ${role} alignment header does not list contigs in the reference's order (first divergence at reference line ${detail}); the tools index contigs by header position, so read evidence would be silently discarded")
+            done < contig_mismatch.txt
+
+            # The primary arrives already called, so its alignments cannot be checked. Its
+            # call set carries the dictionary its caller used, which shows the same defect.
+            primary_contigs="~{default="" primary_contigs}"
+            if [ -n "${primary_contigs}" ] && [ -s "${primary_contigs}" ]; then
+                pn=$(grep -c . "${primary_contigs}")
+                head -n "${pn}" reference_contigs.txt > reference_prefix_primary.txt
+                if ! diff -q reference_prefix_primary.txt "${primary_contigs}" >/dev/null 2>&1; then
+                    first=$(diff --unchanged-line-format= --old-line-format='%dn %L' \
+                                 --new-line-format= reference_prefix_primary.txt "${primary_contigs}" \
+                            | head -1 || true)
+                    errors+=("the primary call set in primary_tarball was made against a reference whose contigs are ordered differently from this run's (first divergence at reference line ${first}); its variant calls would have been made with read evidence silently discarded")
+                fi
+            fi
+        else
+            errors+=("reference index not readable: ${fai}")
+        fi
+
+        # Reference genome and its companions. The tools resolve the sequence dictionary
+        # beside the FASTA, with the extension replaced rather than appended.
+        fasta="~{genome_fasta}"
+        for f in "${fasta}" "${fasta}.fai" "${fasta%.*}.dict"; do
+            [ -r "${f}" ] || errors+=("reference file not readable: ${f}")
+        done
+
+        # Reference data. A directory is checked for readability, a file for both.
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            if [ -d "${f}" ]; then
+                [ -r "${f}" ] || errors+=("reference directory not readable: ${f}")
+            else
+                [ -f "${f}" ] && [ -r "${f}" ] || errors+=("reference file not readable: ${f}")
+            fi
+        done < "~{write_lines(reference_files)}"
+
+        if ~{if use_copy_number then "true" else "false"}; then
+            echo "copy-number evidence requested; COBALT will run on the longitudinal sample" >&2
+        fi
+
+        # Container images. Cheap to check, and a missing one otherwise surfaces only when
+        # that task starts.
+        while IFS= read -r img; do
+            [ -n "${img}" ] || continue
+            [ -r "~{images_dir}/${img}" ] || errors+=("container image not readable: ~{images_dir}/${img}")
+        done < "~{write_lines(required_images)}"
+
+        if [ "${#errors[@]}" -gt 0 ]; then
+            echo "ERROR: inputs rejected" >&2
+            printf '  - %s\n' "${errors[@]}" >&2
+            exit 1
+        fi
+
+        {
+            echo "mode: ${mode}"
+            echo "primary_platform: ${primary_platform}"
+            echo "longitudinal_platform: ${longitudinal_platform}"
+            echo "copy_number: ~{if use_copy_number then "true" else "false"}"
+            paste "~{write_lines(roles)}" "~{write_lines(sample_ids)}" \
+                | while IFS=$'\t' read -r role sid; do echo "${role}: ${sid}"; done
+            if ~{if has_primary_tarball then "true" else "false"}; then
+                echo "primary from tarball: ~{default="unknown" primary_tumor_id}"
+                echo "primary purple version: ~{default="unknown" primary_purple_version}"
+                echo "primary call set contigs: $(grep -c . "${primary_contigs:-/dev/null}" 2>/dev/null || echo 0)"
+            fi
+            echo "reference: ~{genome_fasta}"
+            echo "contigs: $(wc -l < reference_contigs.txt)"
+        } | tee ~{outputFileNamePrefix}.validation.log
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
 
-    # Unzip input directories
-    unzip ~{purple_dir}
-    unzip ~{amber_dir}
-    unzip ~{cobalt_dir}
-    unzip ~{bqr_dir}
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
 
-    # Create output directory
-    mkdir -p ~{plasma_name}.wisp
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
-    # Run WISP with skip_bqr
-    java -Xmx~{heapRam}G -jar $WISP_ROOT/wisp.jar \
-      -patient_id ~{donor} \
-      -tumor_id ~{tumour_name} \
-      -samples ~{plasma_name} \
-      -purple_dir ~{tumour_name}.solPrimary.purple/ \
-      -amber_dir ~{tumour_name}.amber/ \
-      -cobalt_dir ~{tumour_name}.cobalt/ \
-      -bqr_dir ~{plasma_name}.sage.bqr \
-      -somatic_vcf ~{somatic_vcf} \
-      -ref_genome ~{refFasta} \
-      -output_dir ~{plasma_name}.wisp/ \
-      -probe_variants_file ~{probe_variants_file} \
-      -threads ~{threads} \
-      -write_types ALL \
-      ~{additionalParameters}
+        # The engine localizes an alignment and its index into separate directories, but the
+        # tools resolve an index by its position beside the alignment, so both are linked into
+        # one directory here under their own names.
+        mkdir -p aln redux
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" "aln/$(basename "${f}")"; done < ~{write_lines(alignments)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" "aln/$(basename "${f}")"; done < ~{write_lines(indexes)}
+        input_bams=$(while IFS= read -r f; do
+                         printf '%s\n' "aln/$(basename "${f}")"
+                     done < ~{write_lines(alignments)} | paste -sd,)
 
-    # Zip output
-    zip -r ~{plasma_name}.wisp.zip ~{plasma_name}.wisp/
-    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.summary.tsv ~{plasma_name}.wisp.summary.tsv 
-    cp ~{plasma_name}.wisp/~{donor}_~{plasma_name}.wisp.somatic_variants.tsv ~{plasma_name}.wisp.somatic_variants.tsv
+        # Ultima reads are single-ended, so there are no duplicates to mark and no mates to
+        # build a consensus from; every other platform gets both.
+        cat > redux.sh <<'COMMAND'
+        set -euo pipefail
 
+        for f in aln/*; do
+            [ -r "${f}" ] && continue
+            echo "ERROR: ${f} cannot be read inside the container; it resolves to" \
+                 "$(readlink -f "${f}")" >&2
+            exit 1
+        done
+
+        redux \
+            -Xmx~{heapMb}m \
+            -sample ~{sample_id} \
+            -input_bam INPUT_BAMS \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -ref_genome_msi_file ~{msi_jitter_sites} \
+            -unmap_regions ~{unmap_regions} \
+            -bamtool $(which samtools) \
+            -sequencing_type ~{platform} \
+            -bqr_write_plot \
+            PLATFORM_ARGS \
+            -threads ~{cores} \
+            -log_level ~{log_level} \
+            -output_bam redux/~{sample_id}.redux.bam \
+            -output_dir redux/
+COMMAND
+
+        if [ "~{platform}" = "ULTIMA" ]; then
+            platform_args="-skip_duplicate_marking"
+        else
+            platform_args="-form_consensus"
+        fi
+
+        sed -i "s|INPUT_BAMS|${input_bams}|; s|PLATFORM_ARGS|${platform_args}|" redux.sh
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash redux.sh
+
+        [ -f "redux/~{sample_id}.redux.bam" ]
+        [ -f "redux/~{sample_id}.redux.bam.bai" ]
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
 
-    unzip ~{amber_directory}
-    unzip ~{cobalt_directory}
-    mkdir ~{outfilePrefix}.purple
-    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "19"; fi)
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
 
-    java -Xmx~{heapRam}G -jar $HMFTOOLS_ROOT/purple.jar \
-      -ref_genome_version ${genome_version} \
-      -ref_genome ~{refFasta}  \
-      -gc_profile ~{gcProfile} \
-      -ensembl_data_dir ~{ensemblDir}  \
-      -reference ~{normal_name} -tumor ~{tumour_name}  \
-      -amber ~{tumour_name}.amber -cobalt ~{tumour_name}.cobalt \
-      ~{"-ploidy_penalty_factor " + ploidy_penalty_factor} \
-      ~{"-ploidy_penalty_standard_deviation " + ploidy_penalty_standard_deviation} \
-      ~{"-somatic_vcf " + somatic_vcf} \
-      ~{"-min_ploidy " + min_ploidy} \
-      ~{"-max_ploidy " + max_ploidy} \
-      ~{"-min_purity " + min_purity} \
-      ~{"-max_purity " + max_purity} \
-      -no_charts \
-      -min_diploid_tumor_ratio_count ~{min_diploid_tumor_ratio_count} \
-      -output_dir ~{outfilePrefix}.purple \
-      ~{additionalParameters}
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
-    zip -r ~{outfilePrefix}.purple.zip ~{outfilePrefix}.purple/
+        # The tools find an index by its position beside the alignment, so both are linked
+        # into the task directory under their expected names.
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux." + normal_ext + "\"" else ""}
+        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux." + normal_ext + "." + normal_idx_ext + "\"" else ""}
 
+        mkdir -p amber
+
+        cat > amber.sh <<'COMMAND'
+        set -euo pipefail
+        amber \
+            -Xmx~{heapMb}m \
+            -tumor ~{tumor_id} \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
+            ~{if defined(normal_id) then "-reference " + normal_id else ""} \
+            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux." + normal_ext else ""} \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -sequencing_type ~{platform} \
+            -loci ~{heterozygous_sites} \
+            ~{"-tumor_min_depth " + tumor_min_depth} \
+            -log_level ~{log_level} \
+            -threads ~{cores} \
+            -output_dir amber/
+COMMAND
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash amber.sh
+
+        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
+        # archived rather than listed as an output.
+        mkdir -p amber_extra
+        find amber -mindepth 1 -maxdepth 1 -type d -exec mv {} amber_extra/ \;
+        tar -czf ~{tumor_id}.amber_plots.tar.gz -C amber_extra .
 ```
 ```
-    # Extract Purple INFO annotations and merge into plasma VCF
-    bcftools annotate \
-      -a ~{purple_vcf} \
-      -c INFO/SUBCL,INFO/PURPLE_VCN,INFO/PURPLE_AF,INFO/PURPLE_CN \
-      ~{sage_vcf} \
-      -Oz -o annotated.vcf.gz
-    
-    tabix -p vcf annotated.vcf.gz
+        set -euo pipefail
+
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
+
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
+
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ~{if defined(normal_bam) then "ln -s \"" + normal_bam + "\" \"" + normal_id + ".redux." + normal_ext + "\"" else ""}
+        ~{if defined(normal_bai) then "ln -s \"" + normal_bai + "\" \"" + normal_id + ".redux." + normal_ext + "." + normal_idx_ext + "\"" else ""}
+
+        mkdir -p cobalt
+
+        cat > cobalt.sh <<'COMMAND'
+        set -euo pipefail
+        cobalt \
+            -Xmx~{heapMb}m \
+            -tumor ~{tumor_id} \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
+            ~{if defined(normal_id) then "-reference " + normal_id else ""} \
+            ~{if defined(normal_bam) then "-reference_bam " + normal_id + ".redux." + normal_ext else ""} \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -gc_profile ~{gc_profile} \
+            ~{if !defined(normal_bam) then "-tumor_only_diploid_bed " + diploid_bed else ""} \
+            -log_level ~{log_level} \
+            -threads ~{cores} \
+            -output_dir cobalt/
+COMMAND
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash cobalt.sh
+
+        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
+        # archived rather than listed as an output.
+        mkdir -p cobalt_extra
+        find cobalt -mindepth 1 -maxdepth 1 -type d -exec mv {} cobalt_extra/ \;
+        tar -czf ~{tumor_id}.cobalt_plots.tar.gz -C cobalt_extra .
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
 
-    # Generate probe variants CSV from PASS + HIGH_CONFIDENCE variants
-    zcat ~{annotated_vcf} | \
-      grep -v "^#" | \
-      awk 'BEGIN{print "TumorId,Category,Variant"}
-           $7=="PASS" && $8~"TIER=HIGH_CONFIDENCE" {
-             printf "~{tumor_id},REPORTABLE_MUTATION,%s:%s %s>%s\n", $1, $2, $4, $5
-           }' > ~{outputFileName}
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
 
-    # Verify file has content
-    line_count=$(wc -l < ~{outputFileName})
-    if [ "$line_count" -le 1 ]; then
-      echo "WARNING: No PASS + HIGH_CONFIDENCE variants found"
-      echo "This may be expected for downsampled/test data"
-    fi
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
-    echo "Generated probe variants file with $((line_count - 1)) variants"
+        # SAGE takes the recalibration and jitter tables from the directory holding the
+        # alignment, so alignments, indexes and tables all go into one directory. The names
+        # are sample-prefixed, so the two samples' tables do not collide.
+        ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
+        ln -s "~{tumor_bai}" "~{tumor_id}.redux.~{tumor_ext}.~{tumor_idx_ext}"
+        ln -s "~{normal_bam}" "~{normal_id}.redux.~{normal_ext}"
+        ln -s "~{normal_bai}" "~{normal_id}.redux.~{normal_ext}.~{normal_idx_ext}"
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(tumor_tsvs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(normal_tsvs)}
+
+        mkdir -p somatic
+
+        # The tumour-in-normal check is Illumina-only, and pulls in the panel of normals and
+        # the population frequencies with it.
+        if [ "~{platform}" = "ILLUMINA" ]; then
+            tinc_args="-run_tinc -write_fit_variants -pon_file ~{sage_pon} -gnomad_freq_dir ~{gnomad_dir}"
+        else
+            tinc_args=""
+        fi
+
+        cat > sage.sh <<'COMMAND'
+        set -euo pipefail
+        sage \
+            -Xmx~{heapMb}m \
+            -reference ~{normal_id} \
+            -reference_bam ~{normal_id}.redux.~{normal_ext} \
+            -ref_sample_count 1 \
+            -tumor ~{tumor_id} \
+            -tumor_bam ~{tumor_id}.redux.~{tumor_ext} \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -hotspots ~{hotspots} \
+            -driver_gene_panel ~{driver_gene_panel} \
+            -high_confidence_bed ~{high_confidence_bed} \
+            -ensembl_data_dir ~{ensembl_data_dir} \
+            -sequencing_type ~{platform} \
+            -include_mt \
+            TINC_ARGS \
+            -threads ~{cores} \
+            -log_level ~{log_level} \
+            -output_vcf somatic/~{tumor_id}.sage.somatic.vcf.gz
+COMMAND
+
+        sed -i "s|TINC_ARGS|${tinc_args}|" sage.sh
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash sage.sh
 ```
 ```
-    set -euo pipefail
+        set -euo pipefail
 
-    genome_version=$(if [ "~{genomeVersion}" == "hg38" ]; then echo "38"; else echo "37"; fi)
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
 
-    java -Xmx~{heapRam}G -jar $PAVE_ROOT/pave.jar \
-      -sample ~{sample} \
-      -input_vcf ~{vcf_file} \
-      -ref_genome ~{refFasta} \
-      -ref_genome_version ${genome_version} \
-      -ensembl_data_dir ~{ensemblDir} \
-      ~{"-driver_gene_panel " + driverGenePanel} \
-      -output_dir ./ \
-      -threads ~{threads} \
-      ~{additionalParameters}
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
+
+        # The index is resolved beside the VCF, so both go into one directory of their own
+        # rather than into the task directory, where the localized copy already sits.
+        mkdir -p sage_input pave_somatic
+        ln -s "~{sage_vcf}" sage_input/
+        ln -s "~{sage_tbi}" sage_input/
+
+        cat > pave.sh <<'COMMAND'
+        set -euo pipefail
+        pave \
+            -Xmx~{heapMb}m \
+            -sample ~{tumor_id} \
+            -input_vcf sage_input/$(basename "~{sage_vcf}") \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -pon_file ~{sage_pon} \
+            -gnomad_freq_dir ~{gnomad_dir} \
+            -clinvar_vcf ~{clinvar_vcf} \
+            -driver_gene_panel ~{driver_gene_panel} \
+            -mappability_bed ~{mappability_bed} \
+            -ensembl_data_dir ~{ensembl_data_dir} \
+            -sequencing_type ~{platform} \
+            -threads ~{cores} \
+            -log_level ~{log_level} \
+            -output_dir pave_somatic/ \
+            -output_vcf pave_somatic/~{tumor_id}.pave.somatic.vcf.gz
+COMMAND
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash pave.sh
+```
+```
+        set -euo pipefail
+
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
+
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
+
+        # PURPLE takes directories, so the upstream outputs are relinked into the shapes it
+        # expects.
+        mkdir -p amber cobalt pave_somatic redux_tumor purple
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" amber/; done < ~{write_lines(amber_files)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt/; done < ~{write_lines(cobalt_files)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_tumor/; done < ~{write_lines(redux_tumor_tsvs)}
+        ln -s "~{pave_vcf}" pave_somatic/
+        ln -s "~{pave_tbi}" pave_somatic/
+
+        # No structural variants are called, so PURPLE is not given an ESVEE directory and
+        # fits copy number from the read ratios alone.
+        cat > purple.sh <<'COMMAND'
+        set -euo pipefail
+        purple \
+            -Xmx~{heapMb}m \
+            -tumor ~{tumor_id} \
+            ~{if defined(normal_id) then "-reference " + normal_id else ""} \
+            -amber amber/ \
+            -cobalt cobalt/ \
+            -pave_somatic_dir pave_somatic/ \
+            -redux_tumor_dir redux_tumor/ \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -driver_gene_panel ~{driver_gene_panel} \
+            -ensembl_data_dir ~{ensembl_data_dir} \
+            -somatic_hotspots ~{hotspots_somatic} \
+            -germline_hotspots ~{hotspots_germline} \
+            -germline_amp_del_freq_file ~{germline_amp_del_freq} \
+            -gc_profile ~{gc_profile} \
+            -circos $(which circos) \
+            -threads ~{cores} \
+            -log_level ~{log_level} \
+            -output_dir purple/
+COMMAND
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash purple.sh
+
+        [ -f "purple/~{tumor_id}.purple.somatic.vcf.gz" ]
+        [ -f "purple/~{tumor_id}.purple.purity.tsv" ]
+
+        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
+        # archived rather than listed as an output.
+        mkdir -p purple_extra
+        find purple -mindepth 1 -maxdepth 1 -type d -exec mv {} purple_extra/ \;
+        tar -czf ~{tumor_id}.purple_plots.tar.gz -C purple_extra .
+```
+```
+        set -euo pipefail
+
+        mkdir -p primary/purple primary/amber primary/plots
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" primary/purple/; done < ~{write_lines(purple_files)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" primary/amber/; done < ~{write_lines(amber_files)}
+
+        # The tools write plots into subdirectories, which the tasks archive so that their
+        # outputs are files. Carried here so the plots are not simply discarded.
+        for plots in "~{purple_plots}" "~{amber_plots}" "~{cobalt_plots}"; do
+            [ -s "${plots}" ] || continue
+            ln -s "${plots}" primary/plots/
+        done
+
+        # Dereferenced, so the archive holds the files rather than links into a task
+        # directory that will be cleaned up.
+        tar -czhf ~{tumor_id}.primary.tar.gz primary
+```
+```
+        set -euo pipefail
+
+        mkdir -p primary
+        tar -xzf "~{tarball}" -C primary --strip-components=1
+
+        purity=$(find primary/purple -name '*.purple.purity.tsv' | head -1)
+        if [ -z "${purity}" ]; then
+            echo "ERROR: no *.purple.purity.tsv in the primary archive; it does not look like" \
+                 "a primary-stage output" >&2
+            exit 1
+        fi
+        basename "${purity}" .purple.purity.tsv > tumor_id.txt
+
+        # What the primary was called with. The somatic VCF carries the sequence dictionary
+        # the caller used, which is the one thing in the archive that can show the primary was
+        # called against a different reference from the one this run uses.
+        sed -n 's/^version=//p' primary/purple/purple.version 2>/dev/null | head -1 > purple_version.txt
+        [ -s purple_version.txt ] || echo unknown > purple_version.txt
+
+        vcf="primary/purple/$(cat tumor_id.txt).purple.somatic.vcf.gz"
+        : > primary_contigs.txt
+        if [ -f "${vcf}" ]; then
+            zcat "${vcf}" | sed -n 's/^##contig=<ID=\([^,>]*\).*/\1/p' > primary_contigs.txt
+        fi
+
+        echo "primary tumour sample id: $(cat tumor_id.txt)," \
+             "called by PURPLE $(cat purple_version.txt)," \
+             "$(grep -c . primary_contigs.txt) contigs in its call set" >&2
+```
+```
+        set -euo pipefail
+
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
+
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
+
+        # The index has to sit beside the VCF, and the recalibration and jitter tables beside
+        # the alignment.
+        mkdir -p purple_primary
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
+        ln -s "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
+        ln -s "~{longitudinal_bai}" "~{longitudinal_id}.redux.~{long_ext}.~{long_idx_ext}"
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
+
+        for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+            if [ ! -e "~{longitudinal_id}.${required}" ]; then
+                echo "ERROR: ~{longitudinal_id}.${required} is missing; without it the tool" \
+                     "skips recalibration and jitter fitting and reports different depths" >&2
+                exit 1
+            fi
+        done
+
+        mkdir -p sage_append
+
+        cat > sage_append.sh <<'COMMAND'
+        set -euo pipefail
+        sage \
+            -Xmx~{heapMb}m \
+            com.hartwig.hmftools.sage.append.SageAppendApplication \
+            -input_vcf purple_primary/~{primary_id}.purple.somatic.vcf.gz \
+            -max_read_depth 100000 \
+            -reference ~{longitudinal_id} \
+            -reference_bam ~{longitudinal_id}.redux.~{long_ext} \
+            -ref_genome ~{genome_fasta} \
+            -ref_genome_version ~{genome_version} \
+            -sequencing_type ~{platform} \
+            -write_frag_lengths \
+            -threads ~{cores} \
+            -log_level ~{log_level} \
+            -output_vcf sage_append/~{outputFileNamePrefix}.sage.append.vcf.gz
+COMMAND
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash sage_append.sh
+```
+```
+        set -euo pipefail
+
+        # Everything the task will open is bound by its filesystem root: the task directory
+        # itself, whatever the caller asked for, and wherever the engine's input links
+        # actually resolve to. Roots rather than the directories themselves, because binding a
+        # path nested inside another bind makes the container runtime skip it, and one root
+        # covers every file beneath it anyway.
+        bind_args=(--pwd "$(pwd)")
+        bind_seen=()
+        add_bind_root() {
+            local p real root
+            p="${1:-}"
+            [ -n "${p}" ] || return 0
+            real=$(readlink -f "${p}") || return 0
+            [ -e "${real}" ] || return 0
+            root="/$(printf '%s' "${real#/}" | cut -d/ -f1)"
+            [ "${root}" != "/" ] || return 0
+            case " ${bind_seen[*]:-} " in *" ${root} "*) return 0 ;; esac
+            bind_seen+=("${root}")
+            bind_args+=(-B "${root}")
+        }
+
+        add_bind_root "$(pwd)"
+        while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
+
+        mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
+        ln -s "~{append_vcf}" sage_append_longitudinal/
+        ln -s "~{append_tbi}" sage_append_longitudinal/
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
+
+        # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
+        # primary normal alignment, which the longitudinal stage does not carry.
+        if ~{if use_copy_number then "true" else "false"}; then
+            methods='SOMATIC_VARIANT;COPY_NUMBER'
+            extra_args="-cobalt_dir cobalt_longitudinal/ -write_types ALL"
+        else
+            methods='SOMATIC_VARIANT'
+            extra_args="-write_types 'SOMATIC_DATA;SOMATIC_PLOT'"
+        fi
+
+        cat > wisp.sh <<'COMMAND'
+        set -euo pipefail
+        wisp \
+            -Xmx~{heapMb}m \
+            com.hartwig.hmftools.wisp.purity.PurityEstimator \
+            -patient_id ~{donor_id} \
+            -tumor_id ~{primary_id} \
+            -samples ~{longitudinal_id} \
+            -purity_methods 'METHODS' \
+            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
+            -purple_dir purple_primary/ \
+            -bqr_dir redux_longitudinal/ \
+            EXTRA_ARGS \
+            -ref_genome ~{genome_fasta} \
+            -log_level ~{log_level} \
+            -output_dir wisp/
+COMMAND
+
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
+
+        while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
+
+        apptainer exec "${bind_args[@]}" \
+            "~{images_dir}/~{image}" bash wisp.sh
+
+        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
+           ~{outputFileNamePrefix}.wisp.summary.tsv
+        tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```

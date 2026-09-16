@@ -28,7 +28,7 @@ Several properties are read from the alignments and checked before any expensive
 
 - **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.
 - **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.
-- **The header must order contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine.
+- **The header must order the called contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine; and a disagreement confined to the decoys that follow chr1..chrM is reported as a note rather than refused, because no variant is called there.
 
 Alignments may be BAM or CRAM.
 
@@ -400,6 +400,10 @@ This section lists command(s) run by wisp workflow
         set -euo pipefail
         errors=()
 
+        # chr1..chr22, chrX, chrY, chrM: the contigs variants are called on, and the size of
+        # the default sequence dictionary htsjdk builds when a tool supplies none.
+        MAIN_CONTIGS=25
+
         mode="~{mode}"
         case "${mode}" in
             WG|PE|WG_PE) ;;
@@ -539,13 +543,17 @@ This section lists command(s) run by wisp workflow
         if [ -r "${fai}" ]; then
             cut -f1 "${fai}" > reference_contigs.txt
 
-            # Reports the first contig that appears earlier than one already seen, or nothing.
+            # Reports the first contig that appears earlier than one already seen. A
+            # disagreement among the contigs variants are called on is a different matter from
+            # one among the decoys that follow them, so the two are labelled apart.
             check_order() {
-                awk 'NR == FNR { idx[$1] = FNR; next }
+                awk -v mains="${MAIN_CONTIGS}" '
+                     NR == FNR { idx[$1] = FNR; next }
                      {
                          if (!($1 in idx)) { absent = absent " " $1; next }
                          if (idx[$1] < prev_idx) {
-                             printf "%s after %s (reference positions %d and %d)\n", \
+                             printf "%s %s after %s (reference positions %d and %d)\n", \
+                                    (idx[$1] <= mains || prev_idx <= mains ? "MAIN:" : "DECOY:"), \
                                     $1, prev_name, idx[$1], prev_idx
                              exit
                          }

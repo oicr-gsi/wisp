@@ -169,6 +169,10 @@ This section lists command(s) run by wisp workflow
         set -euo pipefail
         errors=()
 
+        # chr1..chr22, chrX, chrY, chrM: the contigs variants are called on, and the size of
+        # the default sequence dictionary htsjdk builds when a tool supplies none.
+        MAIN_CONTIGS=25
+
         mode="~{mode}"
         case "${mode}" in
             WG|PE|WG_PE) ;;
@@ -308,13 +312,17 @@ This section lists command(s) run by wisp workflow
         if [ -r "${fai}" ]; then
             cut -f1 "${fai}" > reference_contigs.txt
 
-            # Reports the first contig that appears earlier than one already seen, or nothing.
+            # Reports the first contig that appears earlier than one already seen. A
+            # disagreement among the contigs variants are called on is a different matter from
+            # one among the decoys that follow them, so the two are labelled apart.
             check_order() {
-                awk 'NR == FNR { idx[$1] = FNR; next }
+                awk -v mains="${MAIN_CONTIGS}" '
+                     NR == FNR { idx[$1] = FNR; next }
                      {
                          if (!($1 in idx)) { absent = absent " " $1; next }
                          if (idx[$1] < prev_idx) {
-                             printf "%s after %s (reference positions %d and %d)\n", \
+                             printf "%s %s after %s (reference positions %d and %d)\n", \
+                                    (idx[$1] <= mains || prev_idx <= mains ? "MAIN:" : "DECOY:"), \
                                     $1, prev_name, idx[$1], prev_idx
                              exit
                          }

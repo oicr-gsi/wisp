@@ -1082,8 +1082,12 @@ task validate_inputs {
                     ABSENT:*)
                         echo "NOTE: the ${role} alignment header lists contigs the reference does" \
                              "not have:${detail#ABSENT:}. Reads on them cannot be called." >&2 ;;
-                    *)
-                        errors+=("the ${role} alignment header orders contigs differently from the reference: ${detail}; the tools address a contig by its position in the header, so read evidence would be silently discarded") ;;
+                    DECOY:*)
+                        echo "NOTE: the ${role} alignment header orders decoy contigs differently" \
+                             "from the reference:${detail#DECOY:}. The called contigs agree, so" \
+                             "this does not affect the variants reported." >&2 ;;
+                    MAIN:*)
+                        errors+=("the ${role} alignment header orders the called contigs differently from the reference:${detail#MAIN:}; the tools address a contig by its position in the header, so read evidence would be silently discarded") ;;
                 esac
             done < contig_report.txt
 
@@ -1095,8 +1099,8 @@ task validate_inputs {
                 while IFS= read -r detail; do
                     [ -n "${detail}" ] || continue
                     case "${detail}" in
-                        ABSENT:*) ;;
-                        *) errors+=("the primary call set in primary_tarball was made against a reference that orders contigs differently from this run's: ${detail}; its variant calls would have been made with read evidence silently discarded") ;;
+                        ABSENT:*|DECOY:*) ;;
+                        MAIN:*) errors+=("the primary call set in primary_tarball was made against a reference that orders the called contigs differently from this run's:${detail#MAIN:}; its variant calls would have been made with read evidence silently discarded") ;;
                     esac
                 done < primary_report.txt
             fi

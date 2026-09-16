@@ -994,6 +994,25 @@ COMMAND
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
         ln -s "~{append_vcf}" sage_append_longitudinal/
         ln -s "~{append_tbi}" sage_append_longitudinal/
+
+        # Controls are estimated in the same invocation, against the same primary. The tool
+        # takes a list of samples and a matching list of VCFs, and reads every sample's error
+        # rates from one directory, so all of it is staged together.
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" redux_longitudinal/; done < ~{write_lines(control_tsvs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_vcfs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_tbis)}
+
+        samples="~{longitudinal_id}"
+        while IFS= read -r id; do
+            [ -n "${id}" ] || continue
+            samples="${samples},${id}"
+        done < ~{write_lines(control_ids)}
+
+        somatic_vcfs="sage_append_longitudinal/~{basename(append_vcf)}"
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            somatic_vcfs="${somatic_vcfs},sage_append_longitudinal/$(basename "${f}")"
+        done < ~{write_lines(control_append_vcfs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1013,9 +1032,9 @@ COMMAND
             com.hartwig.hmftools.wisp.purity.PurityEstimator \
             -patient_id ~{donor_id} \
             -tumor_id ~{primary_id} \
-            -samples ~{longitudinal_id} \
+            -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
-            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
+            -somatic_vcf 'SOMATIC_VCFS' \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -1024,14 +1043,26 @@ COMMAND
             -output_dir wisp/
 COMMAND
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash wisp.sh
 
-        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
-           ~{outputFileNamePrefix}.wisp.summary.tsv
+        # One row per sample, however the tool chose to split them across files.
+        first=1
+        : > ~{outputFileNamePrefix}.wisp.summary.tsv
+        for f in wisp/*.wisp.summary.tsv; do
+            [ -e "${f}" ] || continue
+            if [ "${first}" -eq 1 ]; then
+                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                first=0
+            else
+                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+            fi
+        done
+        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
+            echo "ERROR: no wisp summary was written" >&2; exit 1; }
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```

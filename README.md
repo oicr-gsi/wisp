@@ -36,6 +36,10 @@ Alignments may be BAM or CRAM.
 
 A sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.
 
+## Controls
+
+`control_redux_dirs` takes REDUX output directories for tumour-free control samples. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is, and all of them are estimated in one WISP invocation alongside it, so the summary carries one row per sample and the longitudinal result can be read against the background the controls establish. They are supplied as directories rather than alignments because the same pool is reused for every subject, and re-running REDUX over it each time is repeated work.
+
 ## Copy number
 
 `use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared.
@@ -83,6 +87,7 @@ Parameter|Value|Default|Description
 `tumor_redux_dir`|String?|None|An existing REDUX output directory for the primary tumour, holding {sample_id}.redux.bam, its index and the recalibration, jitter and microsatellite tables. Supplied instead of tumor_alignments, so REDUX does not run again
 `normal_redux_dir`|String?|None|An existing REDUX output directory for the matched normal, supplied instead of normal_alignments
 `longitudinal_redux_dir`|String?|None|An existing REDUX output directory for the longitudinal sample, supplied instead of longitudinal_alignments
+`control_redux_dirs`|Array[String]|[]|Existing REDUX output directories for tumour-free control samples, measured against the same primary to establish the background the longitudinal sample is judged against. Supplied as directories because the same pool is reused for every subject, so re-running REDUX on it each time is repeated work
 `primary_tarball`|File?|None|Primary-stage output from an earlier WG run. MANDATORY for PE, and must not be supplied for WG or WG_PE
 `tumor_sample_id`|String?|None|Overrides the primary tumour sample id, which is otherwise read from the alignment's read-group SM tag
 `normal_sample_id`|String?|None|Overrides the matched normal sample id, which is otherwise read from the alignment's read-group SM tag
@@ -202,6 +207,17 @@ Parameter|Value|Default|Description
 `cobalt_longitudinal.cores`|Int|8|Number of CPUs allocated to the job
 `cobalt_longitudinal.timeout`|Int|24|Maximum run time, in hours
 `cobalt_longitudinal.modules`|String|"wisp/3.0.0"|Environment modules to load
+`stage_control.sample_id_override`|String?|None|Selects which sample to take when the directory holds more than one. Otherwise the directory must hold exactly one
+`stage_control.jobMemory`|Int|2|Memory allocated to the job, in GB
+`stage_control.cores`|Int|1|Number of CPUs allocated to the job
+`stage_control.timeout`|Int|1|Maximum run time, in hours
+`stage_control.modules`|String|"wisp/3.0.0"|Environment modules to load
+`sage_append_control.image`|String|"hmftools-sage-5.0.2--hdfd78af_0.img"|Container image filename within images_dir
+`sage_append_control.heapFraction`|Float|0.75|Fraction of jobMemory given to the JVM heap
+`sage_append_control.jobMemory`|Int|48|Memory allocated to the job, in GB
+`sage_append_control.cores`|Int|8|Number of CPUs allocated to the job
+`sage_append_control.timeout`|Int|48|Maximum run time, in hours
+`sage_append_control.modules`|String|"wisp/3.0.0"|Environment modules to load
 `sage_append.image`|String|"hmftools-sage-5.0.2--hdfd78af_0.img"|Container image filename within images_dir
 `sage_append.heapFraction`|Float|0.75|Fraction of jobMemory given to the JVM heap
 `sage_append.jobMemory`|Int|48|Memory allocated to the job, in GB
@@ -1225,6 +1241,25 @@ COMMAND
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
         ln -s "~{append_vcf}" sage_append_longitudinal/
         ln -s "~{append_tbi}" sage_append_longitudinal/
+
+        # Controls are estimated in the same invocation, against the same primary. The tool
+        # takes a list of samples and a matching list of VCFs, and reads every sample's error
+        # rates from one directory, so all of it is staged together.
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" redux_longitudinal/; done < ~{write_lines(control_tsvs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_vcfs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_tbis)}
+
+        samples="~{longitudinal_id}"
+        while IFS= read -r id; do
+            [ -n "${id}" ] || continue
+            samples="${samples},${id}"
+        done < ~{write_lines(control_ids)}
+
+        somatic_vcfs="sage_append_longitudinal/~{basename(append_vcf)}"
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            somatic_vcfs="${somatic_vcfs},sage_append_longitudinal/$(basename "${f}")"
+        done < ~{write_lines(control_append_vcfs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1244,9 +1279,9 @@ COMMAND
             com.hartwig.hmftools.wisp.purity.PurityEstimator \
             -patient_id ~{donor_id} \
             -tumor_id ~{primary_id} \
-            -samples ~{longitudinal_id} \
+            -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
-            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
+            -somatic_vcf 'SOMATIC_VCFS' \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -1255,15 +1290,27 @@ COMMAND
             -output_dir wisp/
 COMMAND
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash wisp.sh
 
-        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
-           ~{outputFileNamePrefix}.wisp.summary.tsv
+        # One row per sample, however the tool chose to split them across files.
+        first=1
+        : > ~{outputFileNamePrefix}.wisp.summary.tsv
+        for f in wisp/*.wisp.summary.tsv; do
+            [ -e "${f}" ] || continue
+            if [ "${first}" -eq 1 ]; then
+                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                first=0
+            else
+                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+            fi
+        done
+        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
+            echo "ERROR: no wisp summary was written" >&2; exit 1; }
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```
 

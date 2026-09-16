@@ -42,7 +42,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -54,7 +54,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -153,7 +153,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -165,7 +165,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -278,7 +278,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -290,7 +290,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -322,7 +322,7 @@
             "wisp.pave_somatic.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
-                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P.primary.tar.gz",
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01.primary.tar.gz",
                     "externalIds": [
                         {
                             "id": "TEST",
@@ -500,7 +500,7 @@
             "wisp.hmftools_log_level": null,
             "wisp.images_dir": null,
             "wisp.longitudinal_alignments": null,
-            "wisp.longitudinal_redux_dir": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T.redux",
+            "wisp.longitudinal_redux_dir": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_plasma.redux",
             "wisp.longitudinal_sample_id": null,
             "wisp.longitudinal_sequencing_platform": null,
             "wisp.mode": "PE",
@@ -520,7 +520,7 @@
             "wisp.pave_somatic.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
-                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P.primary.tar.gz",
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01.primary.tar.gz",
                     "externalIds": [
                         {
                             "id": "TEST",
@@ -701,7 +701,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -713,7 +713,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ct_T_PG_Novaseq_X_validation_v1_2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -733,7 +733,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -745,7 +745,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Ly_R_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -844,7 +844,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -856,7 +856,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_Nk_P_WG_Novaseq_X_Validation_v1-2.downsampled.bam.bai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",

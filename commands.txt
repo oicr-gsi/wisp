@@ -155,9 +155,20 @@ This section lists command(s) run by wisp workflow
         # header, because the tag is per record. An alignment REDUX has already processed is
         # reported as satisfying the requirement without being read.
         if ~{if requires_mate_cigar then "true" else "false"}; then
-            found=$(samtools view "$(head -1 ~{write_lines(alignments)})" \
-                    | head -~{records} | grep -c 'MC:Z:' || true)
-            if [ "${found}" -gt 0 ]; then echo true > has_mate_cigar.txt; else echo false > has_mate_cigar.txt; fi
+            # Every alignment, not just the first: REDUX merges them into one sample, so a
+            # single lane without the tags is enough to mark duplicates wrong.
+            missing=""
+            while IFS= read -r a; do
+                [ -n "${a}" ] || continue
+                found=$(samtools view "${a}" | head -~{records} | grep -c 'MC:Z:' || true)
+                [ "${found}" -gt 0 ] || missing="${missing} $(basename "${a}")"
+            done < ~{write_lines(alignments)}
+            if [ -n "${missing}" ]; then
+                echo false > has_mate_cigar.txt
+                echo "~{role}: no mate CIGAR tags in:${missing}" >&2
+            else
+                echo true > has_mate_cigar.txt
+            fi
         else
             echo true > has_mate_cigar.txt
         fi

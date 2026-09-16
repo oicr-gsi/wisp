@@ -108,7 +108,7 @@ Parameter|Value|Default|Description
 `stage_tumor.cores`|Int|1|Number of CPUs allocated to the job
 `stage_tumor.timeout`|Int|1|Maximum run time, in hours
 `stage_tumor.modules`|String|"wisp/3.0.0"|Environment modules to load
-`probe_tumor.records`|Int|10000|How many records to read when looking for mate CIGAR tags
+`probe_tumor.records`|Int|10000|How many records to read from each alignment when looking for mate CIGAR tags
 `probe_tumor.jobMemory`|Int|4|Memory allocated to the job, in GB
 `probe_tumor.cores`|Int|1|Number of CPUs allocated to the job
 `probe_tumor.timeout`|Int|2|Maximum run time, in hours
@@ -117,7 +117,7 @@ Parameter|Value|Default|Description
 `stage_normal.cores`|Int|1|Number of CPUs allocated to the job
 `stage_normal.timeout`|Int|1|Maximum run time, in hours
 `stage_normal.modules`|String|"wisp/3.0.0"|Environment modules to load
-`probe_normal.records`|Int|10000|How many records to read when looking for mate CIGAR tags
+`probe_normal.records`|Int|10000|How many records to read from each alignment when looking for mate CIGAR tags
 `probe_normal.jobMemory`|Int|4|Memory allocated to the job, in GB
 `probe_normal.cores`|Int|1|Number of CPUs allocated to the job
 `probe_normal.timeout`|Int|2|Maximum run time, in hours
@@ -130,7 +130,7 @@ Parameter|Value|Default|Description
 `stage_longitudinal.cores`|Int|1|Number of CPUs allocated to the job
 `stage_longitudinal.timeout`|Int|1|Maximum run time, in hours
 `stage_longitudinal.modules`|String|"wisp/3.0.0"|Environment modules to load
-`probe_longitudinal.records`|Int|10000|How many records to read when looking for mate CIGAR tags
+`probe_longitudinal.records`|Int|10000|How many records to read from each alignment when looking for mate CIGAR tags
 `probe_longitudinal.jobMemory`|Int|4|Memory allocated to the job, in GB
 `probe_longitudinal.cores`|Int|1|Number of CPUs allocated to the job
 `probe_longitudinal.timeout`|Int|2|Maximum run time, in hours
@@ -386,9 +386,20 @@ This section lists command(s) run by wisp workflow
         # header, because the tag is per record. An alignment REDUX has already processed is
         # reported as satisfying the requirement without being read.
         if ~{if requires_mate_cigar then "true" else "false"}; then
-            found=$(samtools view "$(head -1 ~{write_lines(alignments)})" \
-                    | head -~{records} | grep -c 'MC:Z:' || true)
-            if [ "${found}" -gt 0 ]; then echo true > has_mate_cigar.txt; else echo false > has_mate_cigar.txt; fi
+            # Every alignment, not just the first: REDUX merges them into one sample, so a
+            # single lane without the tags is enough to mark duplicates wrong.
+            missing=""
+            while IFS= read -r a; do
+                [ -n "${a}" ] || continue
+                found=$(samtools view "${a}" | head -~{records} | grep -c 'MC:Z:' || true)
+                [ "${found}" -gt 0 ] || missing="${missing} $(basename "${a}")"
+            done < ~{write_lines(alignments)}
+            if [ -n "${missing}" ]; then
+                echo false > has_mate_cigar.txt
+                echo "~{role}: no mate CIGAR tags in:${missing}" >&2
+            else
+                echo true > has_mate_cigar.txt
+            fi
         else
             echo true > has_mate_cigar.txt
         fi

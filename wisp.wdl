@@ -733,7 +733,7 @@ task probe_alignments {
         role:              "Which sample this is: tumor, normal or longitudinal. Reported back so validate_inputs can name the sample in an error"
         sample_id_override: "Used as the sample id instead of the read-group SM tag. Still checked against what the alignments report, and a disagreement is reported"
         requires_mate_cigar: "Whether mate CIGAR tags have to be present. False for an alignment REDUX has already processed, which has consumed them"
-        records:           "How many records to read when looking for mate CIGAR tags"
+        records:           "How many records to read from each alignment when looking for mate CIGAR tags"
         jobMemory:         "Memory allocated to the job, in GB"
         cores:             "Number of CPUs allocated to the job"
         timeout:           "Maximum run time, in hours"
@@ -801,9 +801,20 @@ task probe_alignments {
         # header, because the tag is per record. An alignment REDUX has already processed is
         # reported as satisfying the requirement without being read.
         if ~{if requires_mate_cigar then "true" else "false"}; then
-            found=$(samtools view "$(head -1 ~{write_lines(alignments)})" \
-                    | head -~{records} | grep -c 'MC:Z:' || true)
-            if [ "${found}" -gt 0 ]; then echo true > has_mate_cigar.txt; else echo false > has_mate_cigar.txt; fi
+            # Every alignment, not just the first: REDUX merges them into one sample, so a
+            # single lane without the tags is enough to mark duplicates wrong.
+            missing=""
+            while IFS= read -r a; do
+                [ -n "${a}" ] || continue
+                found=$(samtools view "${a}" | head -~{records} | grep -c 'MC:Z:' || true)
+                [ "${found}" -gt 0 ] || missing="${missing} $(basename "${a}")"
+            done < ~{write_lines(alignments)}
+            if [ -n "${missing}" ]; then
+                echo false > has_mate_cigar.txt
+                echo "~{role}: no mate CIGAR tags in:${missing}" >&2
+            else
+                echo true > has_mate_cigar.txt
+            fi
         else
             echo true > has_mate_cigar.txt
         fi

@@ -482,7 +482,7 @@ workflow wisp {
 
     meta {
         author: "Gavin Peng"
-        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\n![wisp workflow](docs/wisp.flow.svg)\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header contig order must match the reference**, as far as the header goes. The tools address contigs by their index in the alignment header, so a header whose contigs are ordered differently from the reference silently discards read evidence. A header that simply lists fewer contigs is fine.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared."
+        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\n![wisp workflow](docs/wisp.flow.svg)\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header must order contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared."
         dependencies: [
             {name: "wisp/3.0.0", url: "https://github.com/hartwigmedical/hmftools/tree/master/wisp"},
             {name: "apptainer/1.4.5", url: "https://apptainer.org/"},
@@ -1035,44 +1035,62 @@ task validate_inputs {
             errors+=("no mate CIGAR (MC) tags in the alignments for: $(tr '\n' ' ' < missing_mc.txt)-- REDUX needs them to mark duplicates correctly")
         fi
 
-        # Contig order. The tools pass a contig's index in the alignment header straight to
-        # htsjdk, so a header ordered differently from the reference discards read evidence
-        # without failing.
+        # Contig order. The tools address a contig by its position in the alignment header, so
+        # a header that orders them differently from the reference makes them read the wrong
+        # contig and discard the evidence without failing. What matters is the relative order
+        # of the contigs the two have in common: a header carrying fewer decoys than the
+        # reference is ordinary and harmless, while one sorted differently -- chr10 before
+        # chr2, as an alphabetically sorted reference produces -- is not.
         fai="~{genome_fasta}.fai"
         if [ -r "${fai}" ]; then
             cut -f1 "${fai}" > reference_contigs.txt
-            # A header that stops early is fine: every contig it does list still sits at the
-            # index the reference gives it, and no read can name an index its own header does
-            # not have. Only disagreement within the header's own length matters, so the
-            # comparison is against that many reference contigs.
+
+            # Reports the first contig that appears earlier than one already seen, or nothing.
+            check_order() {
+                awk 'NR == FNR { idx[$1] = FNR; next }
+                     {
+                         if (!($1 in idx)) { absent = absent " " $1; next }
+                         if (idx[$1] < prev_idx) {
+                             printf "%s after %s (reference positions %d and %d)\n", \
+                                    $1, prev_name, idx[$1], prev_idx
+                             exit
+                         }
+                         prev_idx = idx[$1]; prev_name = $1
+                     }
+                     END { if (absent != "") printf "ABSENT:%s\n", absent }' \
+                    reference_contigs.txt "$1"
+            }
+
             paste "~{write_lines(roles)}" "~{write_lines(contig_lists)}" \
                 | while IFS=$'\t' read -r role contigs; do
-                      n=$(grep -c . "${contigs}" || true)
-                      head -n "${n}" reference_contigs.txt > reference_prefix.txt
-                      if ! diff -q reference_prefix.txt "${contigs}" >/dev/null 2>&1; then
-                          first=$(diff --unchanged-line-format= --old-line-format='%dn %L' \
-                                       --new-line-format= reference_prefix.txt "${contigs}" \
-                                  | head -1 || true)
-                          echo "${role}|${first}"
-                      fi
-                  done > contig_mismatch.txt
+                      check_order "${contigs}" | while IFS= read -r line; do
+                          echo "${role}|${line}"
+                      done
+                  done > contig_report.txt
+
             while IFS='|' read -r role detail; do
                 [ -n "${role}" ] || continue
-                errors+=("the ${role} alignment header does not list contigs in the reference's order (first divergence at reference line ${detail}); the tools index contigs by header position, so read evidence would be silently discarded")
-            done < contig_mismatch.txt
+                case "${detail}" in
+                    ABSENT:*)
+                        echo "NOTE: the ${role} alignment header lists contigs the reference does" \
+                             "not have:${detail#ABSENT:}. Reads on them cannot be called." >&2 ;;
+                    *)
+                        errors+=("the ${role} alignment header orders contigs differently from the reference: ${detail}; the tools address a contig by its position in the header, so read evidence would be silently discarded") ;;
+                esac
+            done < contig_report.txt
 
             # The primary arrives already called, so its alignments cannot be checked. Its
             # call set carries the dictionary its caller used, which shows the same defect.
             primary_contigs="~{default="" primary_contigs}"
             if [ -n "${primary_contigs}" ] && [ -s "${primary_contigs}" ]; then
-                pn=$(grep -c . "${primary_contigs}")
-                head -n "${pn}" reference_contigs.txt > reference_prefix_primary.txt
-                if ! diff -q reference_prefix_primary.txt "${primary_contigs}" >/dev/null 2>&1; then
-                    first=$(diff --unchanged-line-format= --old-line-format='%dn %L' \
-                                 --new-line-format= reference_prefix_primary.txt "${primary_contigs}" \
-                            | head -1 || true)
-                    errors+=("the primary call set in primary_tarball was made against a reference whose contigs are ordered differently from this run's (first divergence at reference line ${first}); its variant calls would have been made with read evidence silently discarded")
-                fi
+                check_order "${primary_contigs}" > primary_report.txt
+                while IFS= read -r detail; do
+                    [ -n "${detail}" ] || continue
+                    case "${detail}" in
+                        ABSENT:*) ;;
+                        *) errors+=("the primary call set in primary_tarball was made against a reference that orders contigs differently from this run's: ${detail}; its variant calls would have been made with read evidence silently discarded") ;;
+                    esac
+                done < primary_report.txt
             fi
         else
             errors+=("reference index not readable: ${fai}")

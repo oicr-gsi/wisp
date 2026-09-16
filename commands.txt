@@ -995,24 +995,24 @@ COMMAND
         ln -s "~{append_vcf}" sage_append_longitudinal/
         ln -s "~{append_tbi}" sage_append_longitudinal/
 
-        # Controls are estimated in the same invocation, against the same primary. The tool
-        # takes a list of samples and a matching list of VCFs, and reads every sample's error
-        # rates from one directory, so all of it is staged together.
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" redux_longitudinal/; done < ~{write_lines(control_tsvs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_vcfs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(control_append_tbis)}
+        # The further samples are estimated in the same invocation, against the same primary.
+        # The tool takes a list of samples and a matching list of VCFs, and reads every
+        # sample's error rates from one directory, so all of it is staged together.
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" redux_longitudinal/; done < ~{write_lines(additional_tsvs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(additional_append_vcfs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(additional_append_tbis)}
 
         samples="~{longitudinal_id}"
         while IFS= read -r id; do
             [ -n "${id}" ] || continue
             samples="${samples},${id}"
-        done < ~{write_lines(control_ids)}
+        done < ~{write_lines(additional_ids)}
 
         somatic_vcfs="sage_append_longitudinal/~{basename(append_vcf)}"
         while IFS= read -r f; do
             [ -n "${f}" ] || continue
             somatic_vcfs="${somatic_vcfs},sage_append_longitudinal/$(basename "${f}")"
-        done < ~{write_lines(control_append_vcfs)}
+        done < ~{write_lines(additional_append_vcfs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the

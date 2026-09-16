@@ -25,7 +25,7 @@
             "wisp.cobalt_primary.modules": null,
             "wisp.cobalt_primary.timeout": null,
             "wisp.container_binds": null,
-            "wisp.donor_id": "test_01",
+            "wisp.donor_id": "test01",
             "wisp.extract_primary.cores": null,
             "wisp.extract_primary.jobMemory": null,
             "wisp.extract_primary.modules": null,
@@ -42,7 +42,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_normal.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -54,7 +54,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_normal.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -68,7 +68,7 @@
             ],
             "wisp.normal_redux_dir": null,
             "wisp.normal_sample_id": null,
-            "wisp.outputFileNamePrefix": "wisp_test_01_wg",
+            "wisp.outputFileNamePrefix": "wisp_test01",
             "wisp.pack_primary.cores": null,
             "wisp.pack_primary.jobMemory": null,
             "wisp.pack_primary.modules": null,
@@ -153,7 +153,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_tumor.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -165,7 +165,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_tumor.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -191,17 +191,17 @@
             "wisp.wisp_purity.modules": null,
             "wisp.wisp_purity.timeout": null
         },
-        "description": "wisp test_01 WG: primary only, produces the tarball a PE run consumes",
+        "description": "wisp test01 WG: primary only, produces the tarball a PE run consumes",
         "engineArguments": {
             "write_to_cache": false,
             "read_from_cache": false
         },
-        "id": "wisp_test_01_wg",
+        "id": "wisp_test01",
         "metadata": {
             "wisp.validation_log": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -209,7 +209,7 @@
             "wisp.primary_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -217,7 +217,7 @@
             "wisp.primary_somatic_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -225,7 +225,7 @@
             "wisp.primary_purity": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_01_wg_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -235,7 +235,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_01_wg.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.0.0/test01.metrics",
                 "type": "script"
             }
         ]
@@ -266,7 +266,7 @@
             "wisp.cobalt_primary.modules": null,
             "wisp.cobalt_primary.timeout": null,
             "wisp.container_binds": null,
-            "wisp.donor_id": "test_01",
+            "wisp.donor_id": "test01",
             "wisp.extract_primary.cores": null,
             "wisp.extract_primary.jobMemory": null,
             "wisp.extract_primary.modules": null,
@@ -278,7 +278,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/pe_plasma.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -290,7 +290,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/pe_plasma.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -309,7 +309,7 @@
             "wisp.normal_alignments": null,
             "wisp.normal_redux_dir": null,
             "wisp.normal_sample_id": null,
-            "wisp.outputFileNamePrefix": "wisp_test_02_pe",
+            "wisp.outputFileNamePrefix": "wisp_test02",
             "wisp.pack_primary.cores": null,
             "wisp.pack_primary.jobMemory": null,
             "wisp.pack_primary.modules": null,
@@ -322,7 +322,7 @@
             "wisp.pave_somatic.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
-                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01.primary.tar.gz",
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/primary.tar.gz",
                     "externalIds": [
                         {
                             "id": "TEST",
@@ -416,17 +416,17 @@
             "wisp.wisp_purity.modules": null,
             "wisp.wisp_purity.timeout": null
         },
-        "description": "wisp test_02 PE: a longitudinal sample against an existing primary",
+        "description": "wisp test02 PE: a longitudinal sample against an existing primary",
         "engineArguments": {
             "write_to_cache": false,
             "read_from_cache": false
         },
-        "id": "wisp_test_02_pe",
+        "id": "wisp_test02",
         "metadata": {
             "wisp.validation_log": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -434,7 +434,7 @@
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -442,7 +442,7 @@
             "wisp.wisp_summary": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -450,7 +450,7 @@
             "wisp.wisp_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_02_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -460,7 +460,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_02_pe.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.0.0/test02.metrics",
                 "type": "script"
             }
         ]
@@ -491,7 +491,7 @@
             "wisp.cobalt_primary.modules": null,
             "wisp.cobalt_primary.timeout": null,
             "wisp.container_binds": null,
-            "wisp.donor_id": "test_01",
+            "wisp.donor_id": "test01",
             "wisp.extract_primary.cores": null,
             "wisp.extract_primary.jobMemory": null,
             "wisp.extract_primary.modules": null,
@@ -500,14 +500,14 @@
             "wisp.hmftools_log_level": null,
             "wisp.images_dir": null,
             "wisp.longitudinal_alignments": null,
-            "wisp.longitudinal_redux_dir": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01_plasma.redux",
+            "wisp.longitudinal_redux_dir": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/plasma.redux",
             "wisp.longitudinal_sample_id": null,
             "wisp.longitudinal_sequencing_platform": null,
             "wisp.mode": "PE",
             "wisp.normal_alignments": null,
             "wisp.normal_redux_dir": null,
             "wisp.normal_sample_id": null,
-            "wisp.outputFileNamePrefix": "wisp_test_03_pe_redux_dir_snv_only",
+            "wisp.outputFileNamePrefix": "wisp_test03",
             "wisp.pack_primary.cores": null,
             "wisp.pack_primary.jobMemory": null,
             "wisp.pack_primary.modules": null,
@@ -520,7 +520,7 @@
             "wisp.pave_somatic.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
-                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/test_01.primary.tar.gz",
+                    "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/primary.tar.gz",
                     "externalIds": [
                         {
                             "id": "TEST",
@@ -614,17 +614,17 @@
             "wisp.wisp_purity.modules": null,
             "wisp.wisp_purity.timeout": null
         },
-        "description": "wisp test_03 PE: longitudinal as a REDUX directory, somatic variants only",
+        "description": "wisp test03 PE: longitudinal as a REDUX directory, somatic variants only",
         "engineArguments": {
             "write_to_cache": false,
             "read_from_cache": false
         },
-        "id": "wisp_test_03_pe_redux_dir_snv_only",
+        "id": "wisp_test03",
         "metadata": {
             "wisp.validation_log": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -632,7 +632,7 @@
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -640,7 +640,7 @@
             "wisp.wisp_summary": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -648,7 +648,7 @@
             "wisp.wisp_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_03_pe_redux_dir_snv_only_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -658,7 +658,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_03_pe_redux_dir_snv_only.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.0.0/test03.metrics",
                 "type": "script"
             }
         ]
@@ -689,7 +689,7 @@
             "wisp.cobalt_primary.modules": null,
             "wisp.cobalt_primary.timeout": null,
             "wisp.container_binds": null,
-            "wisp.donor_id": "test_01",
+            "wisp.donor_id": "test01",
             "wisp.extract_primary.cores": null,
             "wisp.extract_primary.jobMemory": null,
             "wisp.extract_primary.modules": null,
@@ -701,7 +701,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/pe_plasma.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -713,7 +713,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/pe_plasma.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/pe_plasma.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -733,7 +733,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_normal.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -745,7 +745,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_normal.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_normal.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -759,7 +759,7 @@
             ],
             "wisp.normal_redux_dir": null,
             "wisp.normal_sample_id": null,
-            "wisp.outputFileNamePrefix": "wisp_test_04_wg_pe",
+            "wisp.outputFileNamePrefix": "wisp_test04",
             "wisp.pack_primary.cores": null,
             "wisp.pack_primary.jobMemory": null,
             "wisp.pack_primary.modules": null,
@@ -844,7 +844,7 @@
                 {
                     "aln": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_tumor.cram",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -856,7 +856,7 @@
                     },
                     "idx": {
                         "contents": {
-                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/wg_tumor.cram.crai",
+                            "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/wg_tumor.cram.crai",
                             "externalIds": [
                                 {
                                     "id": "TEST",
@@ -882,17 +882,17 @@
             "wisp.wisp_purity.modules": null,
             "wisp.wisp_purity.timeout": null
         },
-        "description": "wisp test_04 WG_PE: both stages in one run",
+        "description": "wisp test04 WG_PE: both stages in one run",
         "engineArguments": {
             "write_to_cache": false,
             "read_from_cache": false
         },
-        "id": "wisp_test_04_wg_pe",
+        "id": "wisp_test04",
         "metadata": {
             "wisp.validation_log": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -900,7 +900,7 @@
             "wisp.primary_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -908,7 +908,7 @@
             "wisp.primary_somatic_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -916,7 +916,7 @@
             "wisp.primary_purity": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -924,7 +924,7 @@
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -932,7 +932,7 @@
             "wisp.wisp_summary": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -940,7 +940,7 @@
             "wisp.wisp_output": {
                 "contents": [
                     {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test_04_wg_pe_@JENKINSID@"
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
                     }
                 ],
                 "type": "ALL"
@@ -950,7 +950,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/workflow_test_04_wg_pe.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.0.0/test04.metrics",
                 "type": "script"
             }
         ]

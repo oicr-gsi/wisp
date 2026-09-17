@@ -38,7 +38,7 @@ A sample that has already been through REDUX is supplied as `tumor_redux_dir`, `
 
 ## Further samples in one run
 
-`additional_redux_dirs` takes REDUX output directories for samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is, and all of them go into one WISP invocation, so the summary carries a row per sample. They are supplied as directories rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
+`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is, and all of them go into one WISP invocation, so the summary carries a row per sample. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
 
 The tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.
 
@@ -89,7 +89,7 @@ Parameter|Value|Default|Description
 `tumor_redux_dir`|String?|None|An existing REDUX output directory for the primary tumour, holding {sample_id}.redux.bam, its index and the recalibration, jitter and microsatellite tables. Supplied instead of tumor_alignments, so REDUX does not run again
 `normal_redux_dir`|String?|None|An existing REDUX output directory for the matched normal, supplied instead of normal_alignments
 `longitudinal_redux_dir`|String?|None|An existing REDUX output directory for the longitudinal sample, supplied instead of longitudinal_alignments
-`additional_redux_dirs`|Array[String]|[]|Existing REDUX output directories for further samples to estimate in the same run: other timepoints from the same patient, or tumour-free controls that establish the background. Each is force-called at the primary's sites exactly as the longitudinal sample is, and all of them are reported in one summary. Supplied as directories because a control pool is reused across subjects, so re-running REDUX over it each time is repeated work. Note the tool takes one patient id for the whole invocation, so a control from another donor is labelled with this donor's id
+`additional_samples`|Array[ReduxSample]|[]|Further samples to estimate in the same run, each named as a sample id and the REDUX output directory holding it: other timepoints from the same patient, or tumour-free controls that establish the background. Several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's sites exactly as the longitudinal sample is, and all of them are reported in one summary. Note the tool takes one patient id for the whole invocation, so a sample from another donor is labelled with this donor's id
 `primary_tarball`|File?|None|Primary-stage output from an earlier WG run. MANDATORY for PE, and must not be supplied for WG or WG_PE
 `tumor_sample_id`|String?|None|Overrides the primary tumour sample id, which is otherwise read from the alignment's read-group SM tag
 `normal_sample_id`|String?|None|Overrides the matched normal sample id, which is otherwise read from the alignment's read-group SM tag
@@ -209,7 +209,6 @@ Parameter|Value|Default|Description
 `cobalt_longitudinal.cores`|Int|8|Number of CPUs allocated to the job
 `cobalt_longitudinal.timeout`|Int|24|Maximum run time, in hours
 `cobalt_longitudinal.modules`|String|"wisp/3.0.0"|Environment modules to load
-`stage_additional.sample_id_override`|String?|None|Selects which sample to take when the directory holds more than one. Otherwise the directory must hold exactly one
 `stage_additional.jobMemory`|Int|2|Memory allocated to the job, in GB
 `stage_additional.cores`|Int|1|Number of CPUs allocated to the job
 `stage_additional.timeout`|Int|1|Maximum run time, in hours

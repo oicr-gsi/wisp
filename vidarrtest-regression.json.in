@@ -1,7 +1,7 @@
 [
     {
         "arguments": {
-            "wisp.additional_redux_dirs": null,
+            "wisp.additional_samples": null,
             "wisp.amber_primary.cores": null,
             "wisp.amber_primary.heapFraction": null,
             "wisp.amber_primary.image": null,
@@ -147,7 +147,6 @@
             "wisp.stage_additional.cores": null,
             "wisp.stage_additional.jobMemory": null,
             "wisp.stage_additional.modules": null,
-            "wisp.stage_additional.sample_id_override": null,
             "wisp.stage_additional.timeout": null,
             "wisp.stage_longitudinal.cores": null,
             "wisp.stage_longitudinal.jobMemory": null,
@@ -278,7 +277,7 @@
     },
     {
         "arguments": {
-            "wisp.additional_redux_dirs": null,
+            "wisp.additional_samples": null,
             "wisp.amber_primary.cores": null,
             "wisp.amber_primary.heapFraction": null,
             "wisp.amber_primary.image": null,
@@ -435,7 +434,6 @@
             "wisp.stage_additional.cores": null,
             "wisp.stage_additional.jobMemory": null,
             "wisp.stage_additional.modules": null,
-            "wisp.stage_additional.sample_id_override": null,
             "wisp.stage_additional.timeout": null,
             "wisp.stage_longitudinal.cores": null,
             "wisp.stage_longitudinal.jobMemory": null,
@@ -539,7 +537,7 @@
     },
     {
         "arguments": {
-            "wisp.additional_redux_dirs": null,
+            "wisp.additional_samples": null,
             "wisp.amber_primary.cores": null,
             "wisp.amber_primary.heapFraction": null,
             "wisp.amber_primary.image": null,
@@ -669,7 +667,6 @@
             "wisp.stage_additional.cores": null,
             "wisp.stage_additional.jobMemory": null,
             "wisp.stage_additional.modules": null,
-            "wisp.stage_additional.sample_id_override": null,
             "wisp.stage_additional.timeout": null,
             "wisp.stage_longitudinal.cores": null,
             "wisp.stage_longitudinal.jobMemory": null,
@@ -773,7 +770,7 @@
     },
     {
         "arguments": {
-            "wisp.additional_redux_dirs": null,
+            "wisp.additional_samples": null,
             "wisp.amber_primary.cores": null,
             "wisp.amber_primary.heapFraction": null,
             "wisp.amber_primary.image": null,
@@ -946,7 +943,6 @@
             "wisp.stage_additional.cores": null,
             "wisp.stage_additional.jobMemory": null,
             "wisp.stage_additional.modules": null,
-            "wisp.stage_additional.sample_id_override": null,
             "wisp.stage_additional.timeout": null,
             "wisp.stage_longitudinal.cores": null,
             "wisp.stage_longitudinal.jobMemory": null,

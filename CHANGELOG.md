@@ -29,6 +29,6 @@ separately
 - SAGE append not run in parallel
 - WISP uses bqr_dor from sage_append
 
-## [2.0.0] - 2026-09-16
+## [3.0.0] - 2026-09-16
 ### Added
 - A brand new version based on oncoanalyser/3.0.0

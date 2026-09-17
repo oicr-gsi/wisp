@@ -76,7 +76,7 @@ workflow wisp {
         normal_redux_dir:        "An existing REDUX output directory for the matched normal, supplied instead of normal_alignments"
         longitudinal_redux_dir:  "An existing REDUX output directory for the longitudinal sample, supplied instead of longitudinal_alignments"
         additional_redux_dirs:   "REDUX output directories whose every sample is estimated alongside the longitudinal one. This is the whole-pool form: point at the directory and each sample in it is taken. Use additional_samples instead to name a subset"
-        additional_samples:      "Further samples to estimate in the same run, each named as a sample id and the REDUX output directory holding it: other timepoints from the same patient, or tumour-free controls that establish the background. Several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's sites exactly as the longitudinal sample is, and all of them are reported in one summary. Note the tool takes one patient id for the whole invocation, so a sample from another donor is labelled with this donor's id"
+        additional_samples:      "Further samples to estimate in the same run, each named as a sample id and the REDUX output directory holding it: other timepoints from the same patient, or tumour-free controls that establish the background. Several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's sites exactly as the longitudinal sample is and estimated by its own WISP invocation, with every result collected into one summary. Note the tool takes one patient id for the whole invocation, so a sample from another donor is labelled with this donor's id"
         primary_tarball:         "Primary-stage output from an earlier WG run. MANDATORY for PE, and must not be supplied for WG or WG_PE"
         tumor_sample_id:         "Overrides the primary tumour sample id, which is otherwise read from the alignment's read-group SM tag"
         normal_sample_id:        "Overrides the matched normal sample id, which is otherwise read from the alignment's read-group SM tag"
@@ -521,6 +521,34 @@ workflow wisp {
                 container_binds = all_binds
         }
 
+        # One invocation per sample. The tool names its output files from the sample list it
+        # was given, so several samples in one call produce a single unusable name; and the
+        # further samples have no copy-number profile of their own, so they are estimated on
+        # somatic variants alone.
+        Array[String] extra_ids = flatten([flatten(stage_pool.sample_id), stage_additional.sample_id])
+        Array[File] extra_vcfs = flatten([flatten(sage_append_pool.append_vcf), sage_append_additional.append_vcf])
+        Array[File] extra_tbis = flatten([flatten(sage_append_pool.append_tbi), sage_append_additional.append_tbi])
+        Array[Array[File]] extra_tsvs = flatten([flatten(stage_pool.tsvs), stage_additional.tsvs])
+
+        scatter (i in range(length(extra_ids))) {
+            call wisp_purity as wisp_additional {
+                input:
+                    donor_id        = donor_id,
+                    primary_id      = primary_id,
+                    longitudinal_id = extra_ids[i],
+                    purple_files    = primary_purple,
+                    append_vcf      = extra_vcfs[i],
+                    append_tbi      = extra_tbis[i],
+                    longitudinal_tsvs = extra_tsvs[i],
+                    use_copy_number = false,
+                    genome_fasta    = genome,
+                    outputFileNamePrefix = extra_ids[i],
+                    log_level       = hmftools_log_level,
+                    images_dir      = images,
+                    container_binds = all_binds
+            }
+        }
+
         call wisp_purity {
             input:
                 donor_id      = donor_id,
@@ -530,10 +558,6 @@ workflow wisp {
                 append_vcf      = sage_append.append_vcf,
                 append_tbi      = sage_append.append_tbi,
                 longitudinal_tsvs = longitudinal_tsvs,
-                additional_ids     = flatten([flatten(stage_pool.sample_id), stage_additional.sample_id]),
-                additional_append_vcfs = flatten([flatten(sage_append_pool.append_vcf), sage_append_additional.append_vcf]),
-                additional_append_tbis = flatten([flatten(sage_append_pool.append_tbi), sage_append_additional.append_tbi]),
-                additional_tsvs    = flatten([flatten(flatten(stage_pool.tsvs)), flatten(stage_additional.tsvs)]),
                 cobalt_files    = cobalt_longitudinal.cobalt_files,
                 use_copy_number = use_copy_number,
                 genome_fasta    = genome,
@@ -541,6 +565,13 @@ workflow wisp {
                 log_level       = hmftools_log_level,
                 images_dir      = images,
                 container_binds = all_binds
+        }
+
+        call collect_wisp {
+            input:
+                summaries = flatten([[wisp_purity.summary], wisp_additional.summary]),
+                tarballs  = flatten([[wisp_purity.tarball], wisp_additional.tarball]),
+                outputFileNamePrefix = outputFileNamePrefix
         }
     }
 
@@ -550,13 +581,13 @@ workflow wisp {
         File? primary_somatic_vcf = purple.somatic_vcf
         File? primary_purity = purple.purity_tsv
         File? longitudinal_append_vcf = sage_append.append_vcf
-        File? wisp_summary = wisp_purity.summary
-        File? wisp_output = wisp_purity.tarball
+        File? wisp_summary = collect_wisp.summary
+        File? wisp_output = collect_wisp.tarball
     }
 
     meta {
         author: "Gavin Peng"
-        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\n![wisp workflow](docs/wisp.flow.svg)\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header must order the called contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine; and a disagreement confined to the decoys that follow chr1..chrM is reported as a note rather than refused, because no variant is called there.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Further samples in one run\n\nTwo inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.\n\n`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is, and all of them go into one WISP invocation, so the summary carries a row per sample. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.\n\nThe tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared."
+        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\n![wisp workflow](docs/wisp.flow.svg)\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header must order the called contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine; and a disagreement confined to the decoys that follow chr1..chrM is reported as a note rather than refused, because no variant is called there.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Further samples in one run\n\nTwo inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.\n\n`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is and then estimated by its own WISP invocation, and `wisp_summary` is the collected table with a row per sample. One invocation each rather than one for all, because the tool names its output files from the sample list it is given, so several samples in a single call produce one unusable filename. The further samples are estimated on somatic variants alone, having no copy-number profile of their own. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.\n\nThe tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared."
         dependencies: [
             {name: "wisp/3.0.0", url: "https://github.com/hartwigmedical/hmftools/tree/master/wisp"},
             {name: "apptainer/1.4.5", url: "https://apptainer.org/"},
@@ -677,6 +708,74 @@ task resolve_resources {
 
 # Lists the samples a REDUX output directory holds, so a pool of them can be taken whole
 # rather than named one by one.
+# Puts every sample's estimate in one table. WISP is run once per sample, so a run with
+# further timepoints or controls produces one summary each; what a reader wants is a single
+# table with a row per sample and one archive holding the rest.
+task collect_wisp {
+    input {
+        Array[File] summaries
+        Array[File] tarballs
+        String outputFileNamePrefix
+        Int jobMemory = 4
+        Int cores = 1
+        Int timeout = 2
+        String modules = "wisp/3.0.0"
+    }
+
+    parameter_meta {
+        summaries: "One WISP summary per sample, the longitudinal sample first"
+        tarballs:  "Each sample's full WISP output"
+        outputFileNamePrefix: "Prefix for the combined summary and archive"
+        jobMemory: "Memory allocated to the job, in GB"
+        cores:     "Number of CPUs allocated to the job"
+        timeout:   "Maximum run time, in hours"
+        modules:   "Environment modules to load"
+    }
+
+    command <<<
+        set -euo pipefail
+
+        # Header from the first, rows from all of them, in the order they were given so the
+        # longitudinal sample stays on top.
+        first=1
+        : > ~{outputFileNamePrefix}.wisp.summary.tsv
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            if [ "${first}" -eq 1 ]; then
+                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                first=0
+            else
+                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+            fi
+        done < ~{write_lines(summaries)}
+
+        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
+            echo "ERROR: no summary rows were collected" >&2; exit 1; }
+
+        mkdir -p wisp_all
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            ln -s "${f}" wisp_all/
+        done < ~{write_lines(tarballs)}
+        tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
+
+        echo "collected $(( $(grep -c . ~{outputFileNamePrefix}.wisp.summary.tsv) - 1 )) sample(s)" >&2
+    >>>
+
+    runtime {
+        memory: "~{jobMemory} GB"
+        cpu: "~{cores}"
+        timeout: "~{timeout}"
+        modules: "~{modules}"
+    }
+
+    output {
+        File summary = "~{outputFileNamePrefix}.wisp.summary.tsv"
+        File tarball = "~{outputFileNamePrefix}.wisp.tar.gz"
+    }
+}
+
+
 task list_redux_samples {
     input {
         String redux_dir
@@ -2432,10 +2531,6 @@ task wisp_purity {
         File append_vcf
         File append_tbi
         Array[File] longitudinal_tsvs
-        Array[String] additional_ids = []
-        Array[File] additional_append_vcfs = []
-        Array[File] additional_append_tbis = []
-        Array[File] additional_tsvs = []
         Array[File]? cobalt_files
         Boolean use_copy_number
         String genome_fasta
@@ -2459,10 +2554,6 @@ task wisp_purity {
         append_vcf:        "The primary's somatic sites as force-called in the longitudinal sample"
         append_tbi:        "Index for that VCF"
         longitudinal_tsvs: "Longitudinal REDUX tables, from which the per-base error rates are read"
-        additional_ids:       "Control sample ids, estimated in the same invocation as the longitudinal sample and against the same primary"
-        additional_append_vcfs: "The primary's somatic sites as force-called in each of them, in the same order as additional_ids"
-        additional_append_tbis: "Indexes for those VCFs"
-        additional_tsvs:   "REDUX tables for every one of them. The tool reads them all from one directory, which works because each file is named by its own sample"
         cobalt_files:      "Longitudinal COBALT output. MANDATORY when use_copy_number is set and unused otherwise"
         use_copy_number:   "Whether COPY_NUMBER joins SOMATIC_VARIANT in the purity methods applied"
         genome_fasta:      "Reference genome FASTA"
@@ -2511,25 +2602,6 @@ task wisp_purity {
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
         ln -s "~{append_vcf}" sage_append_longitudinal/
         ln -s "~{append_tbi}" sage_append_longitudinal/
-
-        # The further samples are estimated in the same invocation, against the same primary.
-        # The tool takes a list of samples and a matching list of VCFs, and reads every
-        # sample's error rates from one directory, so all of it is staged together.
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" redux_longitudinal/; done < ~{write_lines(additional_tsvs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(additional_append_vcfs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(additional_append_tbis)}
-
-        samples="~{longitudinal_id}"
-        while IFS= read -r id; do
-            [ -n "${id}" ] || continue
-            samples="${samples},${id}"
-        done < ~{write_lines(additional_ids)}
-
-        somatic_vcfs="sage_append_longitudinal/~{basename(append_vcf)}"
-        while IFS= read -r f; do
-            [ -n "${f}" ] || continue
-            somatic_vcfs="${somatic_vcfs},sage_append_longitudinal/$(basename "${f}")"
-        done < ~{write_lines(additional_append_vcfs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -2549,9 +2621,9 @@ task wisp_purity {
             com.hartwig.hmftools.wisp.purity.PurityEstimator \
             -patient_id ~{donor_id} \
             -tumor_id ~{primary_id} \
-            -samples 'SAMPLES' \
+            -samples ~{longitudinal_id} \
             -purity_methods 'METHODS' \
-            -somatic_vcf 'SOMATIC_VCFS' \
+            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -2560,27 +2632,15 @@ task wisp_purity {
             -output_dir wisp/
 COMMAND
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash wisp.sh
 
-        # One row per sample, however the tool chose to split them across files.
-        first=1
-        : > ~{outputFileNamePrefix}.wisp.summary.tsv
-        for f in wisp/*.wisp.summary.tsv; do
-            [ -e "${f}" ] || continue
-            if [ "${first}" -eq 1 ]; then
-                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
-                first=0
-            else
-                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
-            fi
-        done
-        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
-            echo "ERROR: no wisp summary was written" >&2; exit 1; }
+        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
+           ~{outputFileNamePrefix}.wisp.summary.tsv
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
     >>>
 

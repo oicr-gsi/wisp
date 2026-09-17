@@ -33,6 +33,21 @@ This section lists command(s) run by wisp workflow
         set -euo pipefail
 
         dir="~{redux_dir}"
+        [ -d "${dir}" ] || { echo "ERROR: not a directory: ${dir}" >&2; exit 1; }
+
+        find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \) \
+            | sed 's|.*/||; s|\.redux\.bam$||; s|\.redux\.cram$||' \
+            | sort -u > sample_ids.txt
+
+        [ -s sample_ids.txt ] || {
+            echo "ERROR: no *.redux.cram or *.redux.bam in ${dir}" >&2; exit 1; }
+
+        echo "${dir}: $(grep -c . sample_ids.txt) sample(s)" >&2
+```
+```
+        set -euo pipefail
+
+        dir="~{redux_dir}"
         [ -d "${dir}" ] || { echo "ERROR: ~{role} redux_dir is not a directory: ${dir}" >&2; exit 1; }
 
         # CRAM first, as the resolver upstream does, then BAM.

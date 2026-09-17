@@ -38,6 +38,8 @@ A sample that has already been through REDUX is supplied as `tumor_redux_dir`, `
 
 ## Further samples in one run
 
+Two inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.
+
 `additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites exactly as the longitudinal sample is, and all of them go into one WISP invocation, so the summary carries a row per sample. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
 
 The tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.
@@ -89,6 +91,7 @@ Parameter|Value|Default|Description
 `tumor_redux_dir`|String?|None|An existing REDUX output directory for the primary tumour, holding {sample_id}.redux.bam, its index and the recalibration, jitter and microsatellite tables. Supplied instead of tumor_alignments, so REDUX does not run again
 `normal_redux_dir`|String?|None|An existing REDUX output directory for the matched normal, supplied instead of normal_alignments
 `longitudinal_redux_dir`|String?|None|An existing REDUX output directory for the longitudinal sample, supplied instead of longitudinal_alignments
+`additional_redux_dirs`|Array[String]|[]|REDUX output directories whose every sample is estimated alongside the longitudinal one. This is the whole-pool form: point at the directory and each sample in it is taken. Use additional_samples instead to name a subset
 `additional_samples`|Array[ReduxSample]|[]|Further samples to estimate in the same run, each named as a sample id and the REDUX output directory holding it: other timepoints from the same patient, or tumour-free controls that establish the background. Several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's sites exactly as the longitudinal sample is, and all of them are reported in one summary. Note the tool takes one patient id for the whole invocation, so a sample from another donor is labelled with this donor's id
 `primary_tarball`|File?|None|Primary-stage output from an earlier WG run. MANDATORY for PE, and must not be supplied for WG or WG_PE
 `tumor_sample_id`|String?|None|Overrides the primary tumour sample id, which is otherwise read from the alignment's read-group SM tag
@@ -209,6 +212,20 @@ Parameter|Value|Default|Description
 `cobalt_longitudinal.cores`|Int|8|Number of CPUs allocated to the job
 `cobalt_longitudinal.timeout`|Int|24|Maximum run time, in hours
 `cobalt_longitudinal.modules`|String|"wisp/3.0.0"|Environment modules to load
+`list_redux_samples.jobMemory`|Int|1|Memory allocated to the job, in GB
+`list_redux_samples.cores`|Int|1|Number of CPUs allocated to the job
+`list_redux_samples.timeout`|Int|1|Maximum run time, in hours
+`list_redux_samples.modules`|String|"wisp/3.0.0"|Environment modules to load
+`stage_pool.jobMemory`|Int|2|Memory allocated to the job, in GB
+`stage_pool.cores`|Int|1|Number of CPUs allocated to the job
+`stage_pool.timeout`|Int|1|Maximum run time, in hours
+`stage_pool.modules`|String|"wisp/3.0.0"|Environment modules to load
+`sage_append_pool.image`|String|"hmftools-sage-5.0.2--hdfd78af_0.img"|Container image filename within images_dir
+`sage_append_pool.heapFraction`|Float|0.75|Fraction of jobMemory given to the JVM heap
+`sage_append_pool.jobMemory`|Int|48|Memory allocated to the job, in GB
+`sage_append_pool.cores`|Int|8|Number of CPUs allocated to the job
+`sage_append_pool.timeout`|Int|48|Maximum run time, in hours
+`sage_append_pool.modules`|String|"wisp/3.0.0"|Environment modules to load
 `stage_additional.jobMemory`|Int|2|Memory allocated to the job, in GB
 `stage_additional.cores`|Int|1|Number of CPUs allocated to the job
 `stage_additional.timeout`|Int|1|Maximum run time, in hours
@@ -276,6 +293,21 @@ This section lists command(s) run by wisp workflow
             fi
             echo "${f%.txt}: ${value}" >&2
         done
+```
+```
+        set -euo pipefail
+
+        dir="~{redux_dir}"
+        [ -d "${dir}" ] || { echo "ERROR: not a directory: ${dir}" >&2; exit 1; }
+
+        find "${dir}" -maxdepth 1 \( -name '*.redux.cram' -o -name '*.redux.bam' \) \
+            | sed 's|.*/||; s|\.redux\.bam$||; s|\.redux\.cram$||' \
+            | sort -u > sample_ids.txt
+
+        [ -s sample_ids.txt ] || {
+            echo "ERROR: no *.redux.cram or *.redux.bam in ${dir}" >&2; exit 1; }
+
+        echo "${dir}: $(grep -c . sample_ids.txt) sample(s)" >&2
 ```
 ```
         set -euo pipefail

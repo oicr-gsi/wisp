@@ -377,6 +377,11 @@ This section lists command(s) run by wisp workflow
 ```
         set -euo pipefail
 
+        if [ ! -s "~{write_lines(alignments)}" ]; then
+            echo "ERROR: no ~{role} alignment to read" >&2
+            exit 1
+        fi
+
         # Sample id and platform come from the read groups, which must agree across the
         # inputs: they are merged into one sample downstream.
         sms=""

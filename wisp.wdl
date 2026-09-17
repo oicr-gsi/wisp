@@ -142,11 +142,13 @@ workflow wisp {
             File tumor_raw_bam = a.aln
             File tumor_raw_bai = a.idx
         }
-        call probe_alignments as probe_tumor {
+        if (defined(tumor_alignments) || defined(tumor_redux_dir)) {
+          call probe_alignments as probe_tumor {
             input: alignments = select_first([stage_tumor.alignments, tumor_raw_bam]),
                    indexes = select_first([stage_tumor.indexes, tumor_raw_bai]),
                    role = "tumor", sample_id_override = tumor_sample_id,
                    requires_mate_cigar = !defined(tumor_redux_dir)
+          }
         }
 
         if (defined(normal_redux_dir)) {
@@ -159,11 +161,13 @@ workflow wisp {
             File normal_raw_bam = a.aln
             File normal_raw_bai = a.idx
         }
-        call probe_alignments as probe_normal {
+        if (defined(normal_alignments) || defined(normal_redux_dir)) {
+          call probe_alignments as probe_normal {
             input: alignments = select_first([stage_normal.alignments, normal_raw_bam]),
                    indexes = select_first([stage_normal.indexes, normal_raw_bai]),
                    role = "normal", sample_id_override = normal_sample_id,
                    requires_mate_cigar = !defined(normal_redux_dir)
+          }
         }
     }
 
@@ -186,11 +190,13 @@ workflow wisp {
             File longitudinal_raw_bam = a.aln
             File longitudinal_raw_bai = a.idx
         }
-        call probe_alignments as probe_longitudinal {
+        if (defined(longitudinal_alignments) || defined(longitudinal_redux_dir)) {
+          call probe_alignments as probe_longitudinal {
             input: alignments = select_first([stage_longitudinal.alignments, longitudinal_raw_bam]),
                    indexes = select_first([stage_longitudinal.indexes, longitudinal_raw_bai]),
                    role = "longitudinal", sample_id_override = longitudinal_sample_id,
                    requires_mate_cigar = !defined(longitudinal_redux_dir)
+          }
         }
     }
 
@@ -858,6 +864,11 @@ task probe_alignments {
 
     command <<<
         set -euo pipefail
+
+        if [ ! -s "~{write_lines(alignments)}" ]; then
+            echo "ERROR: no ~{role} alignment to read" >&2
+            exit 1
+        fi
 
         # Sample id and platform come from the read groups, which must agree across the
         # inputs: they are merged into one sample downstream.

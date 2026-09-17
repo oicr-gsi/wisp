@@ -325,12 +325,16 @@ This section lists command(s) run by wisp workflow
         [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
             echo "ERROR: no summary rows were collected" >&2; exit 1; }
 
+        # Unpacked into a directory per sample rather than kept as nested archives, so a
+        # reader reaches a table in one step.
         mkdir -p wisp_all
         while IFS= read -r f; do
             [ -n "${f}" ] || continue
-            ln -s "${f}" wisp_all/
+            name=$(basename "${f}" .wisp.tar.gz)
+            mkdir -p "wisp_all/${name}"
+            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
         done < ~{write_lines(tarballs)}
-        tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
+        tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
 
         echo "collected $(( $(grep -c . ~{outputFileNamePrefix}.wisp.summary.tsv) - 1 )) sample(s)" >&2
 ```

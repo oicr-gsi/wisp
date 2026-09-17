@@ -724,7 +724,7 @@ task collect_wisp {
 
     parameter_meta {
         summaries: "One WISP summary per sample, the longitudinal sample first"
-        tarballs:  "Each sample's full WISP output"
+        tarballs:  "Each sample's full WISP output, unpacked into a directory named after that sample"
         outputFileNamePrefix: "Prefix for the combined summary and archive"
         jobMemory: "Memory allocated to the job, in GB"
         cores:     "Number of CPUs allocated to the job"
@@ -752,12 +752,16 @@ task collect_wisp {
         [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
             echo "ERROR: no summary rows were collected" >&2; exit 1; }
 
+        # Unpacked into a directory per sample rather than kept as nested archives, so a
+        # reader reaches a table in one step.
         mkdir -p wisp_all
         while IFS= read -r f; do
             [ -n "${f}" ] || continue
-            ln -s "${f}" wisp_all/
+            name=$(basename "${f}" .wisp.tar.gz)
+            mkdir -p "wisp_all/${name}"
+            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
         done < ~{write_lines(tarballs)}
-        tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
+        tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
 
         echo "collected $(( $(grep -c . ~{outputFileNamePrefix}.wisp.summary.tsv) - 1 )) sample(s)" >&2
     >>>

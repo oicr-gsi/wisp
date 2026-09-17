@@ -1,6 +1,7 @@
 {
     "names": [
-        "wisp"
+        "wisp",
+        "wisp_primary"
     ],
     "wdl": "wisp.wdl"
 }

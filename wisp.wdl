@@ -569,6 +569,7 @@ workflow wisp {
 
         call collect_wisp {
             input:
+                sample_ids = flatten([[select_first([probe_longitudinal.sample_id])], extra_ids]),
                 summaries = flatten([[wisp_purity.summary], wisp_additional.summary]),
                 tarballs  = flatten([[wisp_purity.tarball], wisp_additional.tarball]),
                 outputFileNamePrefix = outputFileNamePrefix
@@ -713,6 +714,7 @@ task resolve_resources {
 # table with a row per sample and one archive holding the rest.
 task collect_wisp {
     input {
+        Array[String] sample_ids
         Array[File] summaries
         Array[File] tarballs
         String outputFileNamePrefix
@@ -723,6 +725,7 @@ task collect_wisp {
     }
 
     parameter_meta {
+        sample_ids: "The sample each summary belongs to, in the same order as summaries. The tool does not name the sample inside the file, so a concatenation without this cannot say which row is which"
         summaries: "One WISP summary per sample, the longitudinal sample first"
         tarballs:  "Each sample's full WISP output, unpacked into a directory named after that sample"
         outputFileNamePrefix: "Prefix for the combined summary and archive"
@@ -736,18 +739,20 @@ task collect_wisp {
         set -euo pipefail
 
         # Header from the first, rows from all of them, in the order they were given so the
-        # longitudinal sample stays on top.
+        # longitudinal sample stays on top. Each row is labelled with its sample, which the
+        # tool writes in the filename rather than in the file.
         first=1
         : > ~{outputFileNamePrefix}.wisp.summary.tsv
-        while IFS= read -r f; do
+        while IFS=$'\t' read -r sid f; do
             [ -n "${f}" ] || continue
             if [ "${first}" -eq 1 ]; then
-                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                head -1 "${f}" | awk 'BEGIN { OFS = "\t" } { print "SampleId", $0 }' \
+                    >> ~{outputFileNamePrefix}.wisp.summary.tsv
                 first=0
-            else
-                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
             fi
-        done < ~{write_lines(summaries)}
+            awk -v sid="${sid}" 'BEGIN { OFS = "\t" } NR > 1 { print sid, $0 }' "${f}" \
+                >> ~{outputFileNamePrefix}.wisp.summary.tsv
+        done < <(paste ~{write_lines(sample_ids)} ~{write_lines(summaries)})
 
         [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
             echo "ERROR: no summary rows were collected" >&2; exit 1; }

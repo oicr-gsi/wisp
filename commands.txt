@@ -33,18 +33,20 @@ This section lists command(s) run by wisp workflow
         set -euo pipefail
 
         # Header from the first, rows from all of them, in the order they were given so the
-        # longitudinal sample stays on top.
+        # longitudinal sample stays on top. Each row is labelled with its sample, which the
+        # tool writes in the filename rather than in the file.
         first=1
         : > ~{outputFileNamePrefix}.wisp.summary.tsv
-        while IFS= read -r f; do
+        while IFS=$'\t' read -r sid f; do
             [ -n "${f}" ] || continue
             if [ "${first}" -eq 1 ]; then
-                cat "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                head -1 "${f}" | awk 'BEGIN { OFS = "\t" } { print "SampleId", $0 }' \
+                    >> ~{outputFileNamePrefix}.wisp.summary.tsv
                 first=0
-            else
-                tail -n +2 "${f}" >> ~{outputFileNamePrefix}.wisp.summary.tsv
             fi
-        done < ~{write_lines(summaries)}
+            awk -v sid="${sid}" 'BEGIN { OFS = "\t" } NR > 1 { print sid, $0 }' "${f}" \
+                >> ~{outputFileNamePrefix}.wisp.summary.tsv
+        done < <(paste ~{write_lines(sample_ids)} ~{write_lines(summaries)})
 
         [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
             echo "ERROR: no summary rows were collected" >&2; exit 1; }

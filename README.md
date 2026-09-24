@@ -2,9 +2,10 @@
 
 ## Overview
 
-SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.
 
-![wisp workflow](docs/wisp.flow.svg)
+![wisp workflow flowchart](./docs/wisp.flow.svg)
+
+SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.
 
 The chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.
 
@@ -47,10 +48,6 @@ The tool takes one patient id for the whole invocation, so samples from another 
 ## Copy number
 
 `use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared.
-
-## Workflow Flowchart
-
-![wisp workflow flowchart](./docs/wisp.flow.svg)
 
 ## Dependencies
 

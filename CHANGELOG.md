@@ -32,3 +32,11 @@ separately
 ## [3.0.0] - 2026-09-16
 ### Added
 - A brand new version based on oncoanalyser/3.0.0
+
+## [3.1.0] - 2026-09-24
+### Added
+- Label each row of the summary with the sample it came from.
+
+### Fixed
+- Pass the sequencing platform to WISP, which otherwise applies its Illumina
+error model to every sample whatever the run.

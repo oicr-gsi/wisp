@@ -46,7 +46,7 @@ The tool takes one patient id for the whole invocation, so samples from another 
 
 ## Copy number
 
-`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so the flag exists to let the two be compared.
+`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so it is off by default and the flag exists to let the two be compared.
 
 It cannot be combined with further samples, and a run that asks for both is refused before any tool starts. One WISP call measures every sample and takes one set of purity methods, while COBALT runs only on the longitudinal sample, so the further samples would be asked for copy-number evidence that was never produced.
 
@@ -97,7 +97,7 @@ Parameter|Value|Default|Description
 `longitudinal_sample_id`|String?|None|Overrides the longitudinal sample id, which is otherwise read from the alignment's read-group SM tag
 `sequencing_platform`|String?|None|Platform of the primary pair: ILLUMINA, ULTIMA or SBX. Read from the read-group PL tag when not set. The tumour and the normal must agree, because AMBER and SAGE are each given both in one call
 `longitudinal_sequencing_platform`|String?|None|Platform of the longitudinal sample, which may differ from the primary's. Read from its read-group PL tag when not set
-`use_copy_number`|Boolean|true|Whether WISP is also asked for COPY_NUMBER. When false, COBALT does not run on the longitudinal sample and WISP reports somatic-variant evidence alone
+`use_copy_number`|Boolean|false|Whether WISP is also asked for COPY_NUMBER. Off by default, so WISP reports somatic-variant evidence alone and COBALT does not run on the longitudinal sample. Cannot be combined with further samples
 `hmftools_log_level`|String|"INFO"|Log level passed to every tool: ERROR, WARN, INFO, DEBUG or TRACE
 `container_binds`|Array[String]|[]|Extra host paths to bind into every container, each reduced to its filesystem root. Rarely needed, and empty is the normal case: the task directory, the reference data and wherever the alignments really live are all discovered and bound automatically
 `images_dir`|String|"$WISP_IMAGES_DIR"|Directory holding the container images, normally the literal $WISP_IMAGES_DIR

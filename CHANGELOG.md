@@ -48,3 +48,4 @@ sample, which the tool supports once the sample list is separated by semicolons.
 - Refuse a run that asks for copy-number evidence alongside further samples.
 - Give SAGE somatic a smaller share of its memory as heap, leaving room for the
 mappings and page cache it needs alongside.
+- Ask for copy-number evidence only when requested, rather than by default.

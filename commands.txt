@@ -32,41 +32,6 @@ This section lists command(s) run by wisp workflow
 ```
         set -euo pipefail
 
-        # Header from the first, rows from all of them, in the order they were given so the
-        # longitudinal sample stays on top. Each row is labelled with its sample, which the
-        # tool writes in the filename rather than in the file.
-        first=1
-        : > ~{outputFileNamePrefix}.wisp.summary.tsv
-        while IFS=$'\t' read -r sid f; do
-            [ -n "${f}" ] || continue
-            if [ "${first}" -eq 1 ]; then
-                head -1 "${f}" | awk 'BEGIN { OFS = "\t" } { print "SampleId", $0 }' \
-                    >> ~{outputFileNamePrefix}.wisp.summary.tsv
-                first=0
-            fi
-            awk -v sid="${sid}" 'BEGIN { OFS = "\t" } NR > 1 { print sid, $0 }' "${f}" \
-                >> ~{outputFileNamePrefix}.wisp.summary.tsv
-        done < <(paste ~{write_lines(sample_ids)} ~{write_lines(summaries)})
-
-        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
-            echo "ERROR: no summary rows were collected" >&2; exit 1; }
-
-        # Unpacked into a directory per sample rather than kept as nested archives, so a
-        # reader reaches a table in one step.
-        mkdir -p wisp_all
-        while IFS= read -r f; do
-            [ -n "${f}" ] || continue
-            name=$(basename "${f}" .wisp.tar.gz)
-            mkdir -p "wisp_all/${name}"
-            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
-        done < ~{write_lines(tarballs)}
-        tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
-
-        echo "collected $(( $(grep -c . ~{outputFileNamePrefix}.wisp.summary.tsv) - 1 )) sample(s)" >&2
-```
-```
-        set -euo pipefail
-
         dir="~{redux_dir}"
         [ -d "${dir}" ] || { echo "ERROR: not a directory: ${dir}" >&2; exit 1; }
 
@@ -455,7 +420,14 @@ This section lists command(s) run by wisp workflow
         done < "~{write_lines(reference_files)}"
 
         if ~{if use_copy_number then "true" else "false"}; then
-            echo "copy-number evidence requested; COBALT will run on the longitudinal sample" >&2
+            if ~{if has_additional_samples then "true" else "false"}; then
+                # Every sample is measured in one call, which takes one set of purity methods,
+                # and COBALT runs only on the longitudinal sample.
+                errors+=("copy-number evidence cannot be combined with further samples; drop\
+ use_copy_number, or run the further samples separately")
+            else
+                echo "copy-number evidence requested; COBALT will run on the longitudinal sample" >&2
+            fi
         fi
 
         # Container images. Cheap to check, and a missing one otherwise surfaces only when
@@ -981,17 +953,32 @@ COMMAND
         # the alignment.
         mkdir -p purple_primary
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
-        ln -s "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
-        ln -s "~{longitudinal_bai}" "~{longitudinal_id}.redux.~{long_ext}.~{long_idx_ext}"
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
 
-        for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
-            if [ ! -e "~{longitudinal_id}.${required}" ]; then
-                echo "ERROR: ~{longitudinal_id}.${required} is missing; without it the tool" \
-                     "skips recalibration and jitter fitting and reports different depths" >&2
-                exit 1
-            fi
-        done
+        # The tool takes the samples as two parallel comma-separated lists, so each alignment
+        # is linked under its own sample id and the lists are built alongside.
+        : > reference_ids.txt
+        : > reference_bams.txt
+        while IFS=$'\t' read -r sid bam bai; do
+            [ -n "${sid}" ] || continue
+            ext="${bam##*.}"
+            ln -sf "${bam}" "${sid}.redux.${ext}"
+            ln -sf "${bai}" "${sid}.redux.${ext}.${bai##*.}"
+            for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+                if [ ! -e "${sid}.${required}" ]; then
+                    echo "ERROR: ${sid}.${required} is missing; without it the tool skips" \
+                         "recalibration and jitter fitting and reports different depths" >&2
+                    exit 1
+                fi
+            done
+            printf '%s\n' "${sid}" >> reference_ids.txt
+            printf '%s\n' "${sid}.redux.${ext}" >> reference_bams.txt
+        done < <(paste ~{write_lines(longitudinal_ids)} \
+                       ~{write_lines(longitudinal_bams)} \
+                       ~{write_lines(longitudinal_bais)})
+
+        reference_ids=$(paste -sd, reference_ids.txt)
+        reference_bams=$(paste -sd, reference_bams.txt)
 
         mkdir -p sage_append
 
@@ -1002,8 +989,8 @@ COMMAND
             com.hartwig.hmftools.sage.append.SageAppendApplication \
             -input_vcf purple_primary/~{primary_id}.purple.somatic.vcf.gz \
             -max_read_depth 100000 \
-            -reference ~{longitudinal_id} \
-            -reference_bam ~{longitudinal_id}.redux.~{long_ext} \
+            -reference REFERENCE_IDS \
+            -reference_bam REFERENCE_BAMS \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -sequencing_type ~{platform} \
@@ -1012,6 +999,8 @@ COMMAND
             -log_level ~{log_level} \
             -output_vcf sage_append/~{outputFileNamePrefix}.sage.append.vcf.gz
 COMMAND
+
+        sed -i "s|REFERENCE_IDS|${reference_ids}|; s|REFERENCE_BAMS|${reference_bams}|" sage_append.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
@@ -1068,7 +1057,7 @@ COMMAND
             com.hartwig.hmftools.wisp.purity.PurityEstimator \
             -patient_id ~{donor_id} \
             -tumor_id ~{primary_id} \
-            -samples ~{longitudinal_id} \
+            -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
             -sequencing_type ~{platform} \
             -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
@@ -1080,14 +1069,27 @@ COMMAND
             -output_dir wisp/
 COMMAND
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
+        # Semicolons, not the commas the tool's own help describes: a comma-separated list is
+        # read as a single sample id, which then names the output files.
+        samples=$(paste -sd';' ~{write_lines(sample_ids)})
+
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash wisp.sh
 
-        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
-           ~{outputFileNamePrefix}.wisp.summary.tsv
+        # The summary is named for the patient when several samples were given and for the
+        # single sample otherwise, and only the many-sample form carries a SampleId column.
+        # Normalise both, so the provisioned table has the same shape either way.
+        summary=$(ls wisp/*.wisp.summary.tsv | head -1)
+        if [ "$(head -1 "${summary}" | cut -f1)" = "SampleId" ]; then
+            cp "${summary}" ~{outputFileNamePrefix}.wisp.summary.tsv
+        else
+            awk -v sid="$(head -1 ~{write_lines(sample_ids)})" 'BEGIN { OFS = "\t" }
+                 NR == 1 { print "SampleId", $0; next }
+                 { print sid, $0 }' "${summary}" > ~{outputFileNamePrefix}.wisp.summary.tsv
+        fi
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```

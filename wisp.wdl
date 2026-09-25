@@ -1740,7 +1740,7 @@ task sage_somatic {
         String images_dir
         Array[String] container_binds
         String image = "hmftools-sage-5.0.2--hdfd78af_0.img"
-        Float heapFraction = 0.75
+        Float heapFraction = 0.5
         Int jobMemory = 80
         Int cores = 12
         Int timeout = 72
@@ -1770,7 +1770,7 @@ task sage_somatic {
         images_dir:          "Directory holding the container images"
         container_binds:   "Host paths to bind into the container"
         image:               "Container image filename within images_dir"
-        heapFraction:        "Fraction of jobMemory given to the JVM heap"
+        heapFraction:        "Fraction of jobMemory given to the JVM heap. A smaller share than the other tools take: this one memory-maps its inputs, and a heap sized close to the memory limit leaves too little for those mappings and the page cache, which surfaces as a bus error rather than an out-of-memory"
         jobMemory:           "Memory allocated to the job, in GB"
         cores:               "Number of CPUs allocated to the job"
         timeout:             "Maximum run time, in hours"

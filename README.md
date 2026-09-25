@@ -174,7 +174,7 @@ Parameter|Value|Default|Description
 `cobalt_primary.timeout`|Int|24|Maximum run time, in hours
 `cobalt_primary.modules`|String|"wisp/3.0.0"|Environment modules to load
 `sage_somatic.image`|String|"hmftools-sage-5.0.2--hdfd78af_0.img"|Container image filename within images_dir
-`sage_somatic.heapFraction`|Float|0.75|Fraction of jobMemory given to the JVM heap
+`sage_somatic.heapFraction`|Float|0.5|Fraction of jobMemory given to the JVM heap. A smaller share than the other tools take: this one memory-maps its inputs, and a heap sized close to the memory limit leaves too little for those mappings and the page cache, which surfaces as a bus error rather than an out-of-memory
 `sage_somatic.jobMemory`|Int|80|Memory allocated to the job, in GB
 `sage_somatic.cores`|Int|12|Number of CPUs allocated to the job
 `sage_somatic.timeout`|Int|72|Maximum run time, in hours

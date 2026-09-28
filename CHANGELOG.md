@@ -40,3 +40,12 @@ separately
 ### Fixed
 - Pass the sequencing platform to WISP, which otherwise applies its Illumina
 error model to every sample whatever the run.
+
+## [3.2.0] - 2026-09-25
+### Changed
+- Measure every sample in one SAGE append and one WISP call rather than a pair per
+sample, which the tool supports once the sample list is separated by semicolons.
+- Refuse a run that asks for copy-number evidence alongside further samples.
+- Give SAGE somatic a smaller share of its memory as heap, leaving room for the
+mappings and page cache it needs alongside.
+- Ask for copy-number evidence only when requested, rather than by default.

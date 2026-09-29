@@ -267,6 +267,14 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
@@ -530,6 +538,14 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
@@ -760,6 +776,14 @@
                 "type": "ALL"
             },
             "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
@@ -1066,6 +1090,14 @@
                 "type": "ALL"
             },
             "wisp.wisp_output": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"

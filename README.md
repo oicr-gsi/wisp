@@ -245,7 +245,8 @@ Output | Type | Description | Labels
 `primary_somatic_vcf`|File?|PURPLE somatic small-variant VCF for the primary tumour, the call set the longitudinal stage measures. Named from the primary tumour sample id. WG and WG_PE only.|vidarr_label: primary_somatic_vcf
 `primary_purity`|File?|PURPLE purity and ploidy fit for the primary tumour. WG and WG_PE only.|vidarr_label: primary_purity
 `longitudinal_append_vcf`|File?|The primary's somatic sites force-called in the longitudinal sample. PE and WG_PE only.|vidarr_label: longitudinal_append_vcf
-`wisp_summary`|File?|WISP purity estimate for the longitudinal sample, one row per purity method. PE and WG_PE only.|vidarr_label: wisp_summary
+`wisp_summary`|File?|WISP purity estimate, a row per sample and every field the tool reports. PE and WG_PE only.|vidarr_label: wisp_summary
+`wisp_snv_summary`|File?|The same estimate reduced to the fields an SNV-MRD assessment reads: the dual-strand fields, which apply to duplex sequencing, and the copy-number fields are left out. PE and WG_PE only.|vidarr_label: wisp_snv_summary
 `wisp_output`|File?|Full WISP output directory as a tarball, including the per-variant table and plots. PE and WG_PE only.|vidarr_label: wisp_output
 
 
@@ -1342,6 +1343,35 @@ COMMAND
                  NR == 1 { print "SampleId", $0; next }
                  { print sid, $0 }' "${summary}" > ~{outputFileNamePrefix}.wisp.summary.tsv
         fi
+        # A reduced table carrying only the fields an SNV-MRD assessment reads. Columns are
+        # picked by name, so the dual-strand and copy-number fields are dropped whether or not
+        # the run produced them, and a renamed column upstream fails here rather than silently
+        # shifting the output.
+        snv_columns='TumorPurity TumorPloidy SNV_MRD TotalVariants CalcVariants
+                     SNVPurity RawSNVPurity SNVPValue SNVPurityLow SNVPurityHigh ClonalMethod
+                     Frag1Variants Frag2PlusVariants ClonalPeakVariants ClonalDropoutRate
+                     SNVLod TotalFragments AlleleFragments WeightedAvgDepth WeightedAvgVCN
+                     WeightedAvgCN PeakBandwidth PeakBandwidthLow PeakBandwidthHigh
+                     OutlierVariants ErrorRate RawBqrErrorRate BqrThreshold BqrExtraInfo'
+        awk -F'\t' -v cols="${snv_columns}" '
+             BEGIN { OFS = "\t"; n = split(cols, src, /[ \n]+/) }
+             NR == 1 {
+                 for (i = 1; i <= NF; i++) pos[$i] = i
+                 id = ("sample_id" in pos) ? "sample_id" : (("SampleId" in pos) ? "SampleId" : "")
+                 if (id == "") missing = " sample_id"
+                 for (j = 1; j <= n; j++) if (!(src[j] in pos)) missing = missing " " src[j]
+                 if (missing != "") {
+                     print "ERROR: the summary has no column(s):" missing > "/dev/stderr"
+                     exit 1 }
+                 line = "sample_id"
+                 for (j = 1; j <= n; j++) line = line OFS src[j]
+                 print line
+                 next }
+             { line = $(pos[id])
+               for (j = 1; j <= n; j++) line = line OFS $(pos[src[j]])
+               print line }' \
+            ~{outputFileNamePrefix}.wisp.summary.tsv > ~{outputFileNamePrefix}.wisp_SNV_summary.tsv
+
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```
 

@@ -11,10 +11,8 @@ set -o pipefail
 
 cd "$1" || exit 1
 
-# File inventory, without the sizes that move with compression level. Outputs are staged
-# as symlinks, so follow them: -type f alone matches none of them and silently records an
-# empty inventory.
-find -L . -type f | sed 's|^\./||' | sort
+# File inventory, without the sizes that move with compression level.
+find . -type f | sed 's|^\./||' | sort
 
 # Variant counts per FILTER value: what changes when a caller behaves differently.
 for vcf in *.vcf.gz; do

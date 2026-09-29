@@ -56,3 +56,7 @@ mappings and page cache it needs alongside.
 SNV-MRD assessment reads. The dual-strand fields, which report a separate assessment
 made over duplex fragments, and the copy-number fields are left out; the full summary
 still carries them.
+
+### Fixed
+- Record the provisioned files in the regression metrics again. Outputs are staged as
+symlinks, which the inventory did not match, so it had been empty.

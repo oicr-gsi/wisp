@@ -15,7 +15,7 @@ A primary tumour is called against its matched normal and fitted with PURPLE, pr
 | mode | inputs | produces |
 |---|---|---|
 | `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |
-| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_output` |
+| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_snv_summary`, `wisp_output` |
 | `WG_PE` | all three alignment sets | both, in sequence |
 
 `normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.

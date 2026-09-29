@@ -50,6 +50,9 @@ sample, which the tool supports once the sample list is separated by semicolons.
 mappings and page cache it needs alongside.
 - Ask for copy-number evidence only when requested, rather than by default.
 
+## [3.3.0] - 2026-09-29
 ### Added
 - A reduced summary, `{prefix}.wisp_SNV_summary.tsv`, carrying only the fields an
-SNV-MRD assessment reads.
+SNV-MRD assessment reads. The dual-strand fields, which report a separate assessment
+made over duplex fragments, and the copy-number fields are left out; the full summary
+still carries them.

@@ -49,3 +49,14 @@ sample, which the tool supports once the sample list is separated by semicolons.
 - Give SAGE somatic a smaller share of its memory as heap, leaving room for the
 mappings and page cache it needs alongside.
 - Ask for copy-number evidence only when requested, rather than by default.
+
+## [3.3.0] - 2026-09-29
+### Added
+- A reduced summary, `{prefix}.wisp_SNV_summary.tsv`, carrying only the fields an
+SNV-MRD assessment reads. The dual-strand fields, which report a separate assessment
+made over duplex fragments, and the copy-number fields are left out; the full summary
+still carries them.
+
+### Fixed
+- Record the provisioned files in the regression metrics again. Outputs are staged as
+symlinks, which the inventory did not match, so it had been empty.

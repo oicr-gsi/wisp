@@ -267,13 +267,21 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.2.0/test01.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.3.0/test01.metrics",
                 "type": "script"
             }
         ]
@@ -530,13 +538,21 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.2.0/test02.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.3.0/test02.metrics",
                 "type": "script"
             }
         ]
@@ -766,13 +782,21 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.2.0/test03.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.3.0/test03.metrics",
                 "type": "script"
             }
         ]
@@ -1072,13 +1096,21 @@
                     }
                 ],
                 "type": "ALL"
+            },
+            "wisp.wisp_snv_summary": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
             }
         },
         "validators": [
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.2.0/test04.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.3.0/test04.metrics",
                 "type": "script"
             }
         ]

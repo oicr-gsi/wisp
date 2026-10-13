@@ -1746,7 +1746,7 @@ task sage_somatic {
         Array[String] container_binds
         String image = "hmftools-sage-5.0.2--hdfd78af_0.img"
         Float heapFraction = 0.5
-        Int jobMemory = 80
+        Int jobMemory = 168
         Int cores = 12
         Int timeout = 72
         String modules = "wisp/3.0.0"
@@ -1776,7 +1776,7 @@ task sage_somatic {
         container_binds:   "Host paths to bind into the container"
         image:               "Container image filename within images_dir"
         heapFraction:        "Fraction of jobMemory given to the JVM heap. A smaller share than the other tools take: this one memory-maps its inputs, and a heap sized close to the memory limit leaves too little for those mappings and the page cache, which surfaces as a bus error rather than an out-of-memory"
-        jobMemory:           "Memory allocated to the job, in GB"
+        jobMemory:           "Memory allocated to the job, in GB. Larger than the other tools need: with a matched normal the tool follows its calling with a tumour-in-normal analysis that holds a whole chromosome's variants in memory at once"
         cores:               "Number of CPUs allocated to the job"
         timeout:             "Maximum run time, in hours"
         modules:             "Environment modules to load"

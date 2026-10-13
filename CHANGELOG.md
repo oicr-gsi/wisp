@@ -56,3 +56,7 @@ mappings and page cache it needs alongside.
 SNV-MRD assessment reads. The dual-strand fields, which report a separate assessment
 made over duplex fragments, and the copy-number fields are left out; the full summary
 still carries them.
+
+### Fixed
+- Give SAGE somatic enough memory for the tumour-in-normal analysis it runs after
+calling, which was exhausting the heap on larger primaries.

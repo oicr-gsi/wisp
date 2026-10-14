@@ -22,7 +22,7 @@ for vcf in *.vcf.gz; do
 done
 
 # The numbers the assay reports.
-for tsv in *.purple.purity.tsv *.wisp.summary.tsv; do
+for tsv in *.purple.purity.tsv *.wisp.summary.tsv *.wisp_SNV_summary.tsv; do
     [ -e "$tsv" ] || continue
     echo "## ${tsv}"
     cat "$tsv"

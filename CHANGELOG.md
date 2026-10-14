@@ -49,3 +49,17 @@ sample, which the tool supports once the sample list is separated by semicolons.
 - Give SAGE somatic a smaller share of its memory as heap, leaving room for the
 mappings and page cache it needs alongside.
 - Ask for copy-number evidence only when requested, rather than by default.
+
+## [3.3.0] - 2026-09-29
+### Added
+- A reduced summary, `{prefix}.wisp_SNV_summary.tsv`, carrying only the fields an
+SNV-MRD assessment reads. The dual-strand fields, which report a separate assessment
+made over duplex fragments, and the copy-number fields are left out; the full summary
+still carries them.
+
+### Fixed
+- Give SAGE somatic enough memory for the tumour-in-normal analysis it runs after
+calling, which was exhausting the heap on larger primaries.
+- Append each sample separately again. One call for all of them opens an alignment
+reader per sample for every region it works on, which exhausts its heap on a pool and
+loses every sample when it fails. WISP still runs once over the resulting VCFs.

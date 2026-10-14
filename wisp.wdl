@@ -512,6 +512,11 @@ workflow wisp {
             }
         }
 
+        # The longitudinal sample leads measured_ids, so its append is the one provisioned.
+        # Taken as a declaration rather than indexed in the output block, which must hold
+        # plain references.
+        File longitudinal_append = sage_append.append_vcf[0]
+
         call wisp_purity {
             input:
                 donor_id        = donor_id,
@@ -537,7 +542,7 @@ workflow wisp {
         File? primary_output = pack_primary.tarball
         File? primary_somatic_vcf = purple.somatic_vcf
         File? primary_purity = purple.purity_tsv
-        Array[File]? longitudinal_append_vcfs = sage_append.append_vcf
+        File? longitudinal_append_vcf = longitudinal_append
         File? wisp_summary = wisp_purity.summary
         File? wisp_snv_summary = wisp_purity.snv_summary
         File? wisp_output = wisp_purity.tarball
@@ -574,9 +579,9 @@ workflow wisp {
                 description: "PURPLE purity and ploidy fit for the primary tumour. WG and WG_PE only.",
                 vidarr_label: "primary_purity"
             },
-            longitudinal_append_vcfs: {
-                description: "The primary's somatic sites force-called in each measured sample, one VCF per sample. PE and WG_PE only.",
-                vidarr_label: "longitudinal_append_vcfs"
+            longitudinal_append_vcf: {
+                description: "The primary's somatic sites force-called in the longitudinal sample. Further samples are appended too, but their VCFs are consumed by the estimate rather than provisioned. PE and WG_PE only.",
+                vidarr_label: "longitudinal_append_vcf"
             },
             wisp_summary: {
                 description: "WISP purity estimate, a row per sample and every field the tool reports. PE and WG_PE only.",

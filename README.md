@@ -244,7 +244,7 @@ Output | Type | Description | Labels
 `primary_output`|File?|Primary-stage PURPLE and AMBER output with the tool plots, as the tarball a later PE run consumes. Named from the primary tumour sample id. WG and WG_PE only.|vidarr_label: primary_output
 `primary_somatic_vcf`|File?|PURPLE somatic small-variant VCF for the primary tumour, the call set the longitudinal stage measures. Named from the primary tumour sample id. WG and WG_PE only.|vidarr_label: primary_somatic_vcf
 `primary_purity`|File?|PURPLE purity and ploidy fit for the primary tumour. WG and WG_PE only.|vidarr_label: primary_purity
-`longitudinal_append_vcfs`|Array[File]?|The primary's somatic sites force-called in each measured sample, one VCF per sample. PE and WG_PE only.|vidarr_label: longitudinal_append_vcfs
+`longitudinal_append_vcf`|File?|The primary's somatic sites force-called in the longitudinal sample. Further samples are appended too, but their VCFs are consumed by the estimate rather than provisioned. PE and WG_PE only.|vidarr_label: longitudinal_append_vcf
 `wisp_summary`|File?|WISP purity estimate, a row per sample and every field the tool reports. PE and WG_PE only.|vidarr_label: wisp_summary
 `wisp_snv_summary`|File?|The same estimate reduced to the fields an SNV-MRD assessment reads: the dual-strand fields, which apply to duplex sequencing, and the copy-number fields are left out. PE and WG_PE only.|vidarr_label: wisp_snv_summary
 `wisp_output`|File?|Full WISP output directory as a tarball, including the per-variant table and plots. PE and WG_PE only.|vidarr_label: wisp_output

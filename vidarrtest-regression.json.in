@@ -268,7 +268,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcfs": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
@@ -539,7 +539,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcfs": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
@@ -783,7 +783,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcfs": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
@@ -1097,7 +1097,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcfs": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"

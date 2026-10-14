@@ -955,30 +955,16 @@ COMMAND
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
 
-        # The tool takes the samples as two parallel comma-separated lists, so each alignment
-        # is linked under its own sample id and the lists are built alongside.
-        : > reference_ids.txt
-        : > reference_bams.txt
-        while IFS=$'\t' read -r sid bam bai; do
-            [ -n "${sid}" ] || continue
-            ext="${bam##*.}"
-            ln -sf "${bam}" "${sid}.redux.${ext}"
-            ln -sf "${bai}" "${sid}.redux.${ext}.${bai##*.}"
-            for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
-                if [ ! -e "${sid}.${required}" ]; then
-                    echo "ERROR: ${sid}.${required} is missing; without it the tool skips" \
-                         "recalibration and jitter fitting and reports different depths" >&2
-                    exit 1
-                fi
-            done
-            printf '%s\n' "${sid}" >> reference_ids.txt
-            printf '%s\n' "${sid}.redux.${ext}" >> reference_bams.txt
-        done < <(paste ~{write_lines(longitudinal_ids)} \
-                       ~{write_lines(longitudinal_bams)} \
-                       ~{write_lines(longitudinal_bais)})
+        ln -sf "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
+        ln -sf "~{longitudinal_bai}" "~{longitudinal_id}.redux.~{long_ext}.~{long_idx_ext}"
 
-        reference_ids=$(paste -sd, reference_ids.txt)
-        reference_bams=$(paste -sd, reference_bams.txt)
+        for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+            if [ ! -e "~{longitudinal_id}.${required}" ]; then
+                echo "ERROR: ~{longitudinal_id}.${required} is missing; without it the tool skips" \
+                     "recalibration and jitter fitting and reports different depths" >&2
+                exit 1
+            fi
+        done
 
         mkdir -p sage_append
 
@@ -989,8 +975,8 @@ COMMAND
             com.hartwig.hmftools.sage.append.SageAppendApplication \
             -input_vcf purple_primary/~{primary_id}.purple.somatic.vcf.gz \
             -max_read_depth 100000 \
-            -reference REFERENCE_IDS \
-            -reference_bam REFERENCE_BAMS \
+            -reference ~{longitudinal_id} \
+            -reference_bam ~{longitudinal_id}.redux.~{long_ext} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -sequencing_type ~{platform} \
@@ -999,8 +985,6 @@ COMMAND
             -log_level ~{log_level} \
             -output_vcf sage_append/~{outputFileNamePrefix}.sage.append.vcf.gz
 COMMAND
-
-        sed -i "s|REFERENCE_IDS|${reference_ids}|; s|REFERENCE_BAMS|${reference_bams}|" sage_append.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
@@ -1036,8 +1020,9 @@ COMMAND
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
-        ln -s "~{append_vcf}" sage_append_longitudinal/
-        ln -s "~{append_tbi}" sage_append_longitudinal/
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_vcfs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_tbis)}
+        somatic_vcfs=$(find sage_append_longitudinal -name '*.vcf.gz' | sort | paste -sd,)
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1060,7 +1045,7 @@ COMMAND
             -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
             -sequencing_type ~{platform} \
-            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
+            -somatic_vcf 'SOMATIC_VCFS' \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -1073,7 +1058,7 @@ COMMAND
         # read as a single sample id, which then names the output files.
         samples=$(paste -sd';' ~{write_lines(sample_ids)})
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 

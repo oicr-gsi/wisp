@@ -60,3 +60,6 @@ still carries them.
 ### Fixed
 - Give SAGE somatic enough memory for the tumour-in-normal analysis it runs after
 calling, which was exhausting the heap on larger primaries.
+- Append each sample separately again. One call for all of them opens an alignment
+reader per sample for every region it works on, which exhausts its heap on a pool and
+loses every sample when it fails. WISP still runs once over the resulting VCFs.

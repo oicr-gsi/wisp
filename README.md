@@ -40,7 +40,7 @@ A sample that has already been through REDUX is supplied as `tumor_redux_dir`, `
 
 Two inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.
 
-`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Every sample is force-called at the primary's somatic sites in one SAGE append and estimated in one WISP call, and `wisp_summary` is that call's table, a row per sample. The cost of a run therefore barely changes with the number of samples. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
+`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Every sample is force-called at the primary's somatic sites by its own SAGE append, and all of them are then estimated in one WISP call, so `wisp_summary` is that call's table with a row per sample. The appends run in parallel and retry one at a time; a single call for all of them would hold one alignment reader per sample per region and exhaust its heap on a pool. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
 
 The tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.
 
@@ -244,7 +244,7 @@ Output | Type | Description | Labels
 `primary_output`|File?|Primary-stage PURPLE and AMBER output with the tool plots, as the tarball a later PE run consumes. Named from the primary tumour sample id. WG and WG_PE only.|vidarr_label: primary_output
 `primary_somatic_vcf`|File?|PURPLE somatic small-variant VCF for the primary tumour, the call set the longitudinal stage measures. Named from the primary tumour sample id. WG and WG_PE only.|vidarr_label: primary_somatic_vcf
 `primary_purity`|File?|PURPLE purity and ploidy fit for the primary tumour. WG and WG_PE only.|vidarr_label: primary_purity
-`longitudinal_append_vcf`|File?|The primary's somatic sites force-called in the longitudinal sample. PE and WG_PE only.|vidarr_label: longitudinal_append_vcf
+`longitudinal_append_vcfs`|Array[File]?|The primary's somatic sites force-called in each measured sample, one VCF per sample. PE and WG_PE only.|vidarr_label: longitudinal_append_vcfs
 `wisp_summary`|File?|WISP purity estimate, a row per sample and every field the tool reports. PE and WG_PE only.|vidarr_label: wisp_summary
 `wisp_snv_summary`|File?|The same estimate reduced to the fields an SNV-MRD assessment reads: the dual-strand fields, which apply to duplex sequencing, and the copy-number fields are left out. PE and WG_PE only.|vidarr_label: wisp_snv_summary
 `wisp_output`|File?|Full WISP output directory as a tarball, including the per-variant table and plots. PE and WG_PE only.|vidarr_label: wisp_output
@@ -1207,30 +1207,16 @@ COMMAND
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
 
-        # The tool takes the samples as two parallel comma-separated lists, so each alignment
-        # is linked under its own sample id and the lists are built alongside.
-        : > reference_ids.txt
-        : > reference_bams.txt
-        while IFS=$'\t' read -r sid bam bai; do
-            [ -n "${sid}" ] || continue
-            ext="${bam##*.}"
-            ln -sf "${bam}" "${sid}.redux.${ext}"
-            ln -sf "${bai}" "${sid}.redux.${ext}.${bai##*.}"
-            for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
-                if [ ! -e "${sid}.${required}" ]; then
-                    echo "ERROR: ${sid}.${required} is missing; without it the tool skips" \
-                         "recalibration and jitter fitting and reports different depths" >&2
-                    exit 1
-                fi
-            done
-            printf '%s\n' "${sid}" >> reference_ids.txt
-            printf '%s\n' "${sid}.redux.${ext}" >> reference_bams.txt
-        done < <(paste ~{write_lines(longitudinal_ids)} \
-                       ~{write_lines(longitudinal_bams)} \
-                       ~{write_lines(longitudinal_bais)})
+        ln -sf "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
+        ln -sf "~{longitudinal_bai}" "~{longitudinal_id}.redux.~{long_ext}.~{long_idx_ext}"
 
-        reference_ids=$(paste -sd, reference_ids.txt)
-        reference_bams=$(paste -sd, reference_bams.txt)
+        for required in redux.bqr.tsv redux.jitter_params.tsv redux.ms_table.tsv.gz; do
+            if [ ! -e "~{longitudinal_id}.${required}" ]; then
+                echo "ERROR: ~{longitudinal_id}.${required} is missing; without it the tool skips" \
+                     "recalibration and jitter fitting and reports different depths" >&2
+                exit 1
+            fi
+        done
 
         mkdir -p sage_append
 
@@ -1241,8 +1227,8 @@ COMMAND
             com.hartwig.hmftools.sage.append.SageAppendApplication \
             -input_vcf purple_primary/~{primary_id}.purple.somatic.vcf.gz \
             -max_read_depth 100000 \
-            -reference REFERENCE_IDS \
-            -reference_bam REFERENCE_BAMS \
+            -reference ~{longitudinal_id} \
+            -reference_bam ~{longitudinal_id}.redux.~{long_ext} \
             -ref_genome ~{genome_fasta} \
             -ref_genome_version ~{genome_version} \
             -sequencing_type ~{platform} \
@@ -1251,8 +1237,6 @@ COMMAND
             -log_level ~{log_level} \
             -output_vcf sage_append/~{outputFileNamePrefix}.sage.append.vcf.gz
 COMMAND
-
-        sed -i "s|REFERENCE_IDS|${reference_ids}|; s|REFERENCE_BAMS|${reference_bams}|" sage_append.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
@@ -1288,8 +1272,9 @@ COMMAND
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
-        ln -s "~{append_vcf}" sage_append_longitudinal/
-        ln -s "~{append_tbi}" sage_append_longitudinal/
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_vcfs)}
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_tbis)}
+        somatic_vcfs=$(find sage_append_longitudinal -name '*.vcf.gz' | sort | paste -sd,)
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1312,7 +1297,7 @@ COMMAND
             -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
             -sequencing_type ~{platform} \
-            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
+            -somatic_vcf 'SOMATIC_VCFS' \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -1325,7 +1310,7 @@ COMMAND
         # read as a single sample id, which then names the output files.
         samples=$(paste -sd';' ~{write_lines(sample_ids)})
 
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 

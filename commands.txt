@@ -1022,7 +1022,15 @@ COMMAND
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_vcfs)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_tbis)}
-        somatic_vcfs=$(find sage_append_longitudinal -name '*.vcf.gz' | sort | paste -sd,)
+        # Named relative to -somatic_dir, in the order the samples were given. The tool
+        # prepends that directory to the value, so with it unset a list of paths acquires a
+        # literal "null" on its first entry.
+        : > somatic_vcfs.txt
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            basename "${f}" >> somatic_vcfs.txt
+        done < ~{write_lines(append_vcfs)}
+        somatic_vcfs=$(paste -sd, somatic_vcfs.txt)
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1045,6 +1053,7 @@ COMMAND
             -samples 'SAMPLES' \
             -purity_methods 'METHODS' \
             -sequencing_type ~{platform} \
+            -somatic_dir sage_append_longitudinal/ \
             -somatic_vcf 'SOMATIC_VCFS' \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \

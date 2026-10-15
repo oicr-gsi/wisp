@@ -63,3 +63,10 @@ calling, which was exhausting the heap on larger primaries.
 - Append each sample separately again. One call for all of them opens an alignment
 reader per sample for every region it works on, which exhausts its heap on a pool and
 loses every sample when it fails. WISP still runs once over the resulting VCFs.
+
+## [3.3.1] - 2026-10-15
+### Fixed
+- Append and estimate each sample separately again, as before 3.2.0. The estimator reads
+a single somatic VCF, so the only way to measure several samples in one call is to append
+them in one call, and that holds an alignment reader per sample for every region it works
+on -- which exhausts its heap on a control pool and loses every sample when it fails.

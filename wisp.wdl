@@ -1488,6 +1488,16 @@ task redux {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1643,6 +1653,16 @@ task amber {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1777,6 +1797,16 @@ task cobalt {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1921,6 +1951,16 @@ task sage_somatic {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -2065,6 +2105,16 @@ task pave_somatic {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -2197,6 +2247,16 @@ task purple {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -2467,6 +2527,16 @@ task sage_append {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -2603,6 +2673,16 @@ task wisp_purity {
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # The image is unpacked into a sandbox before it runs, so the runtime's temporary
+        # directory has to be writable and allow execution. Unset, it falls back to a path
+        # that is mounted noexec on some clusters, where the first exec inside the container
+        # fails with a permission error. Prefer whatever the scheduler offers as node-local.
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "$(pwd)"; do
+            [ -n "${tmp_candidate}" ] && [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            export APPTAINER_TMPDIR="${tmp_candidate}" SINGULARITY_TMPDIR="${tmp_candidate}"
+            break
+        done
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {

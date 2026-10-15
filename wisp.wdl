@@ -2679,7 +2679,6 @@ COMMAND
 
     output {
         File summary = "~{outputFileNamePrefix}.wisp.summary.tsv"
-        File snv_summary = "~{outputFileNamePrefix}.wisp_SNV_summary.tsv"
         File tarball = "~{outputFileNamePrefix}.wisp.tar.gz"
         Array[File] wisp_files = glob("wisp/*")
     }

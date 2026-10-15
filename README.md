@@ -40,7 +40,7 @@ A sample that has already been through REDUX is supplied as `tumor_redux_dir`, `
 
 Two inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.
 
-`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Every sample is force-called at the primary's somatic sites by its own SAGE append, and all of them are then estimated in one WISP call, so `wisp_summary` is that call's table with a row per sample. The appends run in parallel and retry one at a time; a single call for all of them would hold one alignment reader per sample per region and exhaust its heap on a pool. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
+`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites by its own SAGE append and estimated by its own WISP call, and `wisp_summary` is the collected table with a row per sample. One call each rather than one for all: the estimator reads a single somatic VCF, so measuring several samples together would mean appending them together, and a single append holds one alignment reader per sample for every region it works on, which exhausts its heap on a pool. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.
 
 The tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.
 
@@ -234,6 +234,10 @@ Parameter|Value|Default|Description
 `wisp_purity.cores`|Int|2|Number of CPUs allocated to the job
 `wisp_purity.timeout`|Int|12|Maximum run time, in hours
 `wisp_purity.modules`|String|"wisp/3.0.0"|Environment modules to load
+`collect_wisp.jobMemory`|Int|4|Memory allocated to the job, in GB
+`collect_wisp.cores`|Int|1|Number of CPUs allocated to the job
+`collect_wisp.timeout`|Int|2|Maximum run time, in hours
+`collect_wisp.modules`|String|"wisp/3.0.0"|Environment modules to load
 
 
 ### Outputs
@@ -280,6 +284,70 @@ This section lists command(s) run by wisp workflow
             fi
             echo "${f%.txt}: ${value}" >&2
         done
+```
+```
+        set -euo pipefail
+
+        # Header from the first, rows from all of them, in the order they were given so the
+        # longitudinal sample stays on top. Each row is labelled with its sample, which the
+        # tool writes in the filename rather than in the file.
+        first=1
+        : > ~{outputFileNamePrefix}.wisp.summary.tsv
+        while IFS=$'\t' read -r sid f; do
+            [ -n "${f}" ] || continue
+            if [ "${first}" -eq 1 ]; then
+                head -1 "${f}" | awk 'BEGIN { OFS = "\t" } { print "SampleId", $0 }' \
+                    >> ~{outputFileNamePrefix}.wisp.summary.tsv
+                first=0
+            fi
+            awk -v sid="${sid}" 'BEGIN { OFS = "\t" } NR > 1 { print sid, $0 }' "${f}" \
+                >> ~{outputFileNamePrefix}.wisp.summary.tsv
+        done < <(paste ~{write_lines(sample_ids)} ~{write_lines(summaries)})
+
+        [ -s ~{outputFileNamePrefix}.wisp.summary.tsv ] || {
+            echo "ERROR: no summary rows were collected" >&2; exit 1; }
+
+        # Unpacked into a directory per sample rather than kept as nested archives, so a
+        # reader reaches a table in one step.
+        mkdir -p wisp_all
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            name=$(basename "${f}" .wisp.tar.gz)
+            mkdir -p "wisp_all/${name}"
+            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
+        done < ~{write_lines(tarballs)}
+        tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
+
+        # A reduced table carrying only the fields an SNV-MRD assessment reads. Columns are
+        # picked by name, so the dual-strand and copy-number fields are dropped whether or
+        # not the run produced them, and a renamed column upstream fails here rather than
+        # silently shifting the output.
+        snv_columns='TumorPurity TumorPloidy SNV_MRD TotalVariants CalcVariants
+                     SNVPurity RawSNVPurity SNVPValue SNVPurityLow SNVPurityHigh ClonalMethod
+                     Frag1Variants Frag2PlusVariants ClonalPeakVariants ClonalDropoutRate
+                     SNVLod TotalFragments AlleleFragments WeightedAvgDepth WeightedAvgVCN
+                     WeightedAvgCN PeakBandwidth PeakBandwidthLow PeakBandwidthHigh
+                     OutlierVariants ErrorRate RawBqrErrorRate BqrThreshold BqrExtraInfo'
+        awk -F'\t' -v cols="${snv_columns}" '
+             BEGIN { OFS = "\t"; n = split(cols, src, /[ \n]+/) }
+             NR == 1 {
+                 for (i = 1; i <= NF; i++) pos[$i] = i
+                 id = ("sample_id" in pos) ? "sample_id" : (("SampleId" in pos) ? "SampleId" : "")
+                 if (id == "") missing = " sample_id"
+                 for (j = 1; j <= n; j++) if (!(src[j] in pos)) missing = missing " " src[j]
+                 if (missing != "") {
+                     print "ERROR: the summary has no column(s):" missing > "/dev/stderr"
+                     exit 1 }
+                 line = "sample_id"
+                 for (j = 1; j <= n; j++) line = line OFS src[j]
+                 print line
+                 next }
+             { line = $(pos[id])
+               for (j = 1; j <= n; j++) line = line OFS $(pos[src[j]])
+               print line }' \
+            ~{outputFileNamePrefix}.wisp.summary.tsv > ~{outputFileNamePrefix}.wisp_SNV_summary.tsv
+
+        echo "collected $(( $(grep -c . ~{outputFileNamePrefix}.wisp.summary.tsv) - 1 )) sample(s)" >&2
 ```
 ```
         set -euo pipefail
@@ -1272,17 +1340,8 @@ COMMAND
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" redux_longitudinal/; done < ~{write_lines(longitudinal_tsvs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_vcfs)}
-        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" sage_append_longitudinal/; done < ~{write_lines(append_tbis)}
-        # Named relative to -somatic_dir, in the order the samples were given. The tool
-        # prepends that directory to the value, so with it unset a list of paths acquires a
-        # literal "null" on its first entry.
-        : > somatic_vcfs.txt
-        while IFS= read -r f; do
-            [ -n "${f}" ] || continue
-            basename "${f}" >> somatic_vcfs.txt
-        done < ~{write_lines(append_vcfs)}
-        somatic_vcfs=$(paste -sd, somatic_vcfs.txt)
+        ln -s "~{append_vcf}" sage_append_longitudinal/
+        ln -s "~{append_tbi}" sage_append_longitudinal/
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" cobalt_longitudinal/; done < ~{write_lines(select_first([cobalt_files, []]))}
 
         # AMBER_LOH is not offered: it needs the primary AMBER directory together with the
@@ -1302,11 +1361,10 @@ COMMAND
             com.hartwig.hmftools.wisp.purity.PurityEstimator \
             -patient_id ~{donor_id} \
             -tumor_id ~{primary_id} \
-            -samples 'SAMPLES' \
+            -samples ~{longitudinal_id} \
             -purity_methods 'METHODS' \
             -sequencing_type ~{platform} \
-            -somatic_dir sage_append_longitudinal/ \
-            -somatic_vcf 'SOMATIC_VCFS' \
+            -somatic_vcf sage_append_longitudinal/~{basename(append_vcf)} \
             -purple_dir purple_primary/ \
             -bqr_dir redux_longitudinal/ \
             EXTRA_ARGS \
@@ -1315,56 +1373,15 @@ COMMAND
             -output_dir wisp/
 COMMAND
 
-        # Semicolons, not the commas the tool's own help describes: a comma-separated list is
-        # read as a single sample id, which then names the output files.
-        samples=$(paste -sd';' ~{write_lines(sample_ids)})
-
-        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|; s|SAMPLES|${samples}|; s|SOMATIC_VCFS|${somatic_vcfs}|" wisp.sh
+        sed -i "s|METHODS|${methods}|; s|EXTRA_ARGS|${extra_args}|" wisp.sh
 
         while IFS= read -r link; do add_bind_root "${link}"; done < <(find . -type l)
 
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash wisp.sh
 
-        # The summary is named for the patient when several samples were given and for the
-        # single sample otherwise, and only the many-sample form carries a SampleId column.
-        # Normalise both, so the provisioned table has the same shape either way.
-        summary=$(ls wisp/*.wisp.summary.tsv | head -1)
-        if [ "$(head -1 "${summary}" | cut -f1)" = "SampleId" ]; then
-            cp "${summary}" ~{outputFileNamePrefix}.wisp.summary.tsv
-        else
-            awk -v sid="$(head -1 ~{write_lines(sample_ids)})" 'BEGIN { OFS = "\t" }
-                 NR == 1 { print "SampleId", $0; next }
-                 { print sid, $0 }' "${summary}" > ~{outputFileNamePrefix}.wisp.summary.tsv
-        fi
-        # A reduced table carrying only the fields an SNV-MRD assessment reads. Columns are
-        # picked by name, so the dual-strand and copy-number fields are dropped whether or not
-        # the run produced them, and a renamed column upstream fails here rather than silently
-        # shifting the output.
-        snv_columns='TumorPurity TumorPloidy SNV_MRD TotalVariants CalcVariants
-                     SNVPurity RawSNVPurity SNVPValue SNVPurityLow SNVPurityHigh ClonalMethod
-                     Frag1Variants Frag2PlusVariants ClonalPeakVariants ClonalDropoutRate
-                     SNVLod TotalFragments AlleleFragments WeightedAvgDepth WeightedAvgVCN
-                     WeightedAvgCN PeakBandwidth PeakBandwidthLow PeakBandwidthHigh
-                     OutlierVariants ErrorRate RawBqrErrorRate BqrThreshold BqrExtraInfo'
-        awk -F'\t' -v cols="${snv_columns}" '
-             BEGIN { OFS = "\t"; n = split(cols, src, /[ \n]+/) }
-             NR == 1 {
-                 for (i = 1; i <= NF; i++) pos[$i] = i
-                 id = ("sample_id" in pos) ? "sample_id" : (("SampleId" in pos) ? "SampleId" : "")
-                 if (id == "") missing = " sample_id"
-                 for (j = 1; j <= n; j++) if (!(src[j] in pos)) missing = missing " " src[j]
-                 if (missing != "") {
-                     print "ERROR: the summary has no column(s):" missing > "/dev/stderr"
-                     exit 1 }
-                 line = "sample_id"
-                 for (j = 1; j <= n; j++) line = line OFS src[j]
-                 print line
-                 next }
-             { line = $(pos[id])
-               for (j = 1; j <= n; j++) line = line OFS $(pos[src[j]])
-               print line }' \
-            ~{outputFileNamePrefix}.wisp.summary.tsv > ~{outputFileNamePrefix}.wisp_SNV_summary.tsv
+        cp wisp/~{donor_id}_~{longitudinal_id}.wisp.summary.tsv \
+           ~{outputFileNamePrefix}.wisp.summary.tsv
 
         tar -czhf ~{outputFileNamePrefix}.wisp.tar.gz wisp
 ```

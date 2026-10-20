@@ -1529,6 +1529,11 @@ task redux {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The engine localizes an alignment and its index into separate directories, but the
@@ -1709,6 +1714,11 @@ task amber {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The tools find an index by its position beside the alignment, so both are linked
@@ -1868,6 +1878,11 @@ task cobalt {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
@@ -2037,6 +2052,11 @@ task sage_somatic {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # SAGE takes the recalibration and jitter tables from the directory holding the
@@ -2206,6 +2226,11 @@ task pave_somatic {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index is resolved beside the VCF, so both go into one directory of their own
@@ -2363,6 +2388,11 @@ task purple {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # PURPLE takes directories, so the upstream outputs are relinked into the shapes it
@@ -2658,6 +2688,11 @@ task sage_append {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index has to sit beside the VCF, and the recalibration and jitter tables beside
@@ -2819,6 +2854,11 @@ task wisp_purity {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp

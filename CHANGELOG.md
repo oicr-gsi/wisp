@@ -78,3 +78,6 @@ reaches a directory mounted noexec on some clusters, where unpacking succeeds an
 first command inside the container fails. Each candidate is now tested by running
 something from it, bare `/tmp` is refused, and a run where none is usable stops with
 that reason rather than part way into a container.
+- Bind the scheduler's temporary directory into the containers. It is not always on the
+same filesystem as the task directory, and the engine points each tool's own temporary
+files at it, so a tool that writes one failed on a path it could not see.

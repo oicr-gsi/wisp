@@ -787,6 +787,31 @@ This section lists command(s) run by wisp workflow
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -869,6 +894,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -933,6 +983,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -994,6 +1069,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1070,6 +1170,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1128,6 +1253,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1251,6 +1401,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {
@@ -1319,6 +1494,31 @@ COMMAND
         # actually resolve to. Roots rather than the directories themselves, because binding a
         # path nested inside another bind makes the container runtime skip it, and one root
         # covers every file beneath it anyway.
+        # An image is unpacked into a sandbox and then run from there, so this has to be
+        # writable and allow execution. Each candidate is tested by running something from
+        # it rather than assumed, because what the schedulers offer differs: a per-job
+        # directory under /tmp here, node-local scratch there, nothing at all somewhere
+        # else. Bare /tmp is refused even where it works, since it is the path being
+        # mounted noexec as clusters are hardened.
+        container_tmp=""
+        for tmp_candidate in "${TMP:-}" "${TMPDIR:-}" "${PWD}"; do
+            [ -n "${tmp_candidate}" ] && [ "${tmp_candidate}" != "/tmp" ] || continue
+            [ -d "${tmp_candidate}" ] && [ -w "${tmp_candidate}" ] || continue
+            probe=$(mktemp "${tmp_candidate}/exectest.XXXXXX" 2>/dev/null) || continue
+            printf '#!/bin/sh\nexit 0\n' > "${probe}"
+            if chmod +x "${probe}" 2>/dev/null && "${probe}" 2>/dev/null; then
+                rm -f "${probe}"
+                container_tmp="${tmp_candidate}"
+                break
+            fi
+            rm -f "${probe}"
+        done
+        [ -n "${container_tmp}" ] || {
+            echo "ERROR: no writable directory that allows execution; set TMP to one" >&2
+            exit 1
+        }
+        export APPTAINER_TMPDIR="${container_tmp}" SINGULARITY_TMPDIR="${container_tmp}"
+
         bind_args=(--pwd "$(pwd)")
         bind_seen=()
         add_bind_root() {

@@ -70,3 +70,11 @@ loses every sample when it fails. WISP still runs once over the resulting VCFs.
 a single somatic VCF, so the only way to measure several samples in one call is to append
 them in one call, and that holds an alignment reader per sample for every region it works
 on -- which exhausts its heap on a control pool and loses every sample when it fails.
+
+## [3.3.2] - 2026-10-16
+### Fixed
+- Unpack container images somewhere that allows execution. The runtime's own default
+reaches a directory mounted noexec on some clusters, where unpacking succeeds and the
+first command inside the container fails. Each candidate is now tested by running
+something from it, bare `/tmp` is refused, and a run where none is usable stops with
+that reason rather than part way into a container.

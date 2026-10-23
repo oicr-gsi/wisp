@@ -89,6 +89,10 @@
             "wisp.pave_somatic.jobMemory": null,
             "wisp.pave_somatic.modules": null,
             "wisp.pave_somatic.timeout": null,
+            "wisp.pre_filtering.cores": null,
+            "wisp.pre_filtering.jobMemory": null,
+            "wisp.pre_filtering.modules": null,
+            "wisp.pre_filtering.timeout": null,
             "wisp.primary_tarball": null,
             "wisp.probe_longitudinal.cores": null,
             "wisp.probe_longitudinal.jobMemory": null,
@@ -198,6 +202,7 @@
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
             "wisp.use_copy_number": null,
+            "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
             "wisp.validate_inputs.jobMemory": null,
             "wisp.validate_inputs.modules": null,
@@ -216,7 +221,7 @@
         },
         "id": "wisp_test01",
         "metadata": {
-            "wisp.validation_log": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
@@ -232,14 +237,6 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.primary_somatic_vcf": {
-                "contents": [
-                    {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
-                    }
-                ],
-                "type": "ALL"
-            },
             "wisp.primary_purity": {
                 "contents": [
                     {
@@ -248,7 +245,23 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_summary": {
+            "wisp.primary_site_report": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.validation_log": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
@@ -272,7 +285,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcf": {
+            "wisp.wisp_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
@@ -380,6 +393,10 @@
             "wisp.pave_somatic.jobMemory": null,
             "wisp.pave_somatic.modules": null,
             "wisp.pave_somatic.timeout": null,
+            "wisp.pre_filtering.cores": null,
+            "wisp.pre_filtering.jobMemory": null,
+            "wisp.pre_filtering.modules": null,
+            "wisp.pre_filtering.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
                     "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/primary.tar.gz",
@@ -473,6 +490,7 @@
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
             "wisp.use_copy_number": true,
+            "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
             "wisp.validate_inputs.jobMemory": null,
             "wisp.validate_inputs.modules": null,
@@ -491,7 +509,7 @@
         },
         "id": "wisp_test02",
         "metadata": {
-            "wisp.validation_log": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
@@ -507,14 +525,6 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.primary_somatic_vcf": {
-                "contents": [
-                    {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
-                    }
-                ],
-                "type": "ALL"
-            },
             "wisp.primary_purity": {
                 "contents": [
                     {
@@ -523,7 +533,23 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_summary": {
+            "wisp.primary_site_report": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.validation_log": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
@@ -547,7 +573,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcf": {
+            "wisp.wisp_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
@@ -628,6 +654,10 @@
             "wisp.pave_somatic.jobMemory": null,
             "wisp.pave_somatic.modules": null,
             "wisp.pave_somatic.timeout": null,
+            "wisp.pre_filtering.cores": null,
+            "wisp.pre_filtering.jobMemory": null,
+            "wisp.pre_filtering.modules": null,
+            "wisp.pre_filtering.timeout": null,
             "wisp.primary_tarball": {
                 "contents": {
                     "configuration": "/.mounts/labs/gsi/testdata/wisp/test_data/3.0.0/primary.tar.gz",
@@ -721,6 +751,7 @@
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
             "wisp.use_copy_number": false,
+            "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
             "wisp.validate_inputs.jobMemory": null,
             "wisp.validate_inputs.modules": null,
@@ -739,7 +770,7 @@
         },
         "id": "wisp_test03",
         "metadata": {
-            "wisp.validation_log": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
@@ -755,14 +786,6 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.primary_somatic_vcf": {
-                "contents": [
-                    {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
-                    }
-                ],
-                "type": "ALL"
-            },
             "wisp.primary_purity": {
                 "contents": [
                     {
@@ -771,7 +794,23 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_summary": {
+            "wisp.primary_site_report": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.validation_log": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
@@ -795,7 +834,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcf": {
+            "wisp.wisp_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
@@ -930,6 +969,10 @@
             "wisp.pave_somatic.jobMemory": null,
             "wisp.pave_somatic.modules": null,
             "wisp.pave_somatic.timeout": null,
+            "wisp.pre_filtering.cores": null,
+            "wisp.pre_filtering.jobMemory": null,
+            "wisp.pre_filtering.modules": null,
+            "wisp.pre_filtering.timeout": null,
             "wisp.primary_tarball": null,
             "wisp.probe_longitudinal.cores": null,
             "wisp.probe_longitudinal.jobMemory": null,
@@ -1039,6 +1082,7 @@
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
             "wisp.use_copy_number": true,
+            "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
             "wisp.validate_inputs.jobMemory": null,
             "wisp.validate_inputs.modules": null,
@@ -1057,7 +1101,7 @@
         },
         "id": "wisp_test04",
         "metadata": {
-            "wisp.validation_log": {
+            "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
@@ -1073,14 +1117,6 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.primary_somatic_vcf": {
-                "contents": [
-                    {
-                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
-                    }
-                ],
-                "type": "ALL"
-            },
             "wisp.primary_purity": {
                 "contents": [
                     {
@@ -1089,7 +1125,23 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.wisp_summary": {
+            "wisp.primary_site_report": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.primary_somatic_vcf": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
+            "wisp.validation_log": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
@@ -1113,7 +1165,7 @@
                 ],
                 "type": "ALL"
             },
-            "wisp.longitudinal_append_vcf": {
+            "wisp.wisp_summary": {
                 "contents": [
                     {
                         "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"

@@ -81,3 +81,11 @@ that reason rather than part way into a container.
 - Bind the scheduler's temporary directory into the containers. It is not always on the
 same filesystem as the task directory, and the engine points each tool's own temporary
 files at it, so a tool that writes one failed on a path it could not see.
+
+## [3.4.0] - 2026-10-23
+### Added
+- Filter the primary's somatic call set and write the result beside it in the primary
+archive, with a report of what each condition costs and how many sites remain usable.
+- `use_primary_filters`, choosing whether the longitudinal stage force-calls that filtered
+site list or the full call set.
+

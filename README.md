@@ -48,9 +48,9 @@ The tool takes one patient id for the whole invocation, so samples from another 
 
 The primary stage writes a second somatic VCF beside PURPLE's, `{sample}.purple.somatic.prefiltered.vcf.gz`, carrying the conditions the estimator documents: mappability, repeat count, SNV only, tier, nearby indel, subclonal, and a germline test. Records are flagged rather than dropped, so the file says per site which condition it failed and a reader selects the records whose FILTER is PASS. Both VCFs go into `primary_output`, and `primary_site_report` gives the per-filter breakdown -- what each condition costs, and how many sites remain usable for MRD.
 
-The germline sites are the only ones removed. Every other condition is one the estimator applies for itself, recording the reason per site, so flagging those keeps both the record and its reason and changes nothing it would have done anyway. It never sees the matched normal, so a germline site left in the file is measured in the patient's own cfDNA and read as tumour; those sites sit near half the reads, so a handful of them can outweigh hundreds of genuine markers at a fraction of a per cent.
+Nothing is dropped: every condition is carried in the FILTER column, and the estimator reads only the records marked PASS. Most of the conditions it would apply for itself, so flagging those changes nothing while keeping the reason visible. The germline one it cannot apply, having no view of the matched normal, and a germline site left in the call set is measured in the patient's own cfDNA and read as tumour -- those sites sit near half the reads, so a handful can outweigh hundreds of genuine markers at a fraction of a per cent.
 
-The germline test is a measurement on the matched normal, which assumes the normal is free of tumour. Where it is not, true somatic sites appear in the normal and are removed as germline, so a contaminated normal makes this filter harmful rather than merely useless. The unfiltered call set is kept beside the filtered one for that reason, and `use_primary_filters` set false recovers it.
+The germline test assumes the matched normal is free of tumour. Where it is not, true somatic sites appear in the normal and are filtered as germline, so a contaminated normal makes this harmful rather than merely redundant. The unfiltered call set is kept beside the filtered one for that reason, and `use_primary_filters` set false recovers it.
 
 `use_primary_filters` chooses which of the two the longitudinal stage force-calls. A tarball made before filtering existed carries only the full call set, and such a run falls back to it with a note rather than failing.
 
@@ -1507,35 +1507,17 @@ COMMAND
             PREV=${n}
         done
 
-        # The germline sites are the only ones removed rather than flagged. Every other
-        # condition is one the estimator applies for itself, so tagging those keeps the
-        # record and its reason; it never sees the matched normal, so a germline site left
-        # in the file is measured in the patient's own cfDNA and read as tumour. Those sites
-        # sit near half the reads, so each contributes far more support than a real marker
-        # at a fraction of a per cent, and a handful can outweigh hundreds of genuine ones.
-        GERMLINE_DROPPED=0
-        if bcftools view -h "${WORK}/cur.vcf.gz" | grep -q '^##FILTER=<ID=GERMLINE,'; then
-            before=$(bcftools view -H "${WORK}/cur.vcf.gz" | wc -l)
-            bcftools view -e 'FILTER~"GERMLINE"' -Oz -o "${WORK}/dropped.vcf.gz" "${WORK}/cur.vcf.gz"
-            mv "${WORK}/dropped.vcf.gz" "${WORK}/cur.vcf.gz"
-            bcftools index -t -f "${WORK}/cur.vcf.gz"
-            GERMLINE_DROPPED=$(( before - $(bcftools view -H "${WORK}/cur.vcf.gz" | wc -l) ))
-        fi
-
         cp "${WORK}/cur.vcf.gz" "${OUT_NAME}"
         bcftools index -t -f "${OUT_NAME}"
         echo "${PREV}" > usable_sites.txt
 
         { echo
           echo "sites usable for MRD: ${PREV} of ${TOTAL}"
-          echo "germline sites removed: ${GERMLINE_DROPPED}"
           echo
           echo "written as ${OUT_NAME}, alongside the unmodified ${VCF_NAME}."
-          echo "The germline sites are gone from that file. Every other condition is carried"
-          echo "in the FILTER column instead, because the estimator applies those itself and"
-          echo "reports them per site, so select FILTER=\"PASS\" for the ${PREV} usable sites."
-          echo "It cannot apply the germline condition, having no view of the matched normal,"
-          echo "which is why those sites are removed rather than marked."
+          echo "That file holds all ${KEPT} PASS-in-purple records; the ones that failed a"
+          echo "condition carry it in the FILTER column rather than being dropped, so select"
+          echo "FILTER=\"PASS\" for the ${PREV} usable sites."
         } >> "${REPORT}"
 
         rm -rf "${WORK}"

@@ -1235,35 +1235,17 @@ COMMAND
             PREV=${n}
         done
 
-        # The germline sites are the only ones removed rather than flagged. Every other
-        # condition is one the estimator applies for itself, so tagging those keeps the
-        # record and its reason; it never sees the matched normal, so a germline site left
-        # in the file is measured in the patient's own cfDNA and read as tumour. Those sites
-        # sit near half the reads, so each contributes far more support than a real marker
-        # at a fraction of a per cent, and a handful can outweigh hundreds of genuine ones.
-        GERMLINE_DROPPED=0
-        if bcftools view -h "${WORK}/cur.vcf.gz" | grep -q '^##FILTER=<ID=GERMLINE,'; then
-            before=$(bcftools view -H "${WORK}/cur.vcf.gz" | wc -l)
-            bcftools view -e 'FILTER~"GERMLINE"' -Oz -o "${WORK}/dropped.vcf.gz" "${WORK}/cur.vcf.gz"
-            mv "${WORK}/dropped.vcf.gz" "${WORK}/cur.vcf.gz"
-            bcftools index -t -f "${WORK}/cur.vcf.gz"
-            GERMLINE_DROPPED=$(( before - $(bcftools view -H "${WORK}/cur.vcf.gz" | wc -l) ))
-        fi
-
         cp "${WORK}/cur.vcf.gz" "${OUT_NAME}"
         bcftools index -t -f "${OUT_NAME}"
         echo "${PREV}" > usable_sites.txt
 
         { echo
           echo "sites usable for MRD: ${PREV} of ${TOTAL}"
-          echo "germline sites removed: ${GERMLINE_DROPPED}"
           echo
           echo "written as ${OUT_NAME}, alongside the unmodified ${VCF_NAME}."
-          echo "The germline sites are gone from that file. Every other condition is carried"
-          echo "in the FILTER column instead, because the estimator applies those itself and"
-          echo "reports them per site, so select FILTER=\"PASS\" for the ${PREV} usable sites."
-          echo "It cannot apply the germline condition, having no view of the matched normal,"
-          echo "which is why those sites are removed rather than marked."
+          echo "That file holds all ${KEPT} PASS-in-purple records; the ones that failed a"
+          echo "condition carry it in the FILTER column rather than being dropped, so select"
+          echo "FILTER=\"PASS\" for the ${PREV} usable sites."
         } >> "${REPORT}"
 
         rm -rf "${WORK}"

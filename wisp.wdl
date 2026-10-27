@@ -58,6 +58,7 @@ workflow wisp {
         String? sequencing_platform
         String? longitudinal_sequencing_platform
         Boolean use_copy_number = false
+        Boolean use_primary_filters = true
         String hmftools_log_level = "INFO"
         Array[String] container_binds = []
         String images_dir = "$WISP_IMAGES_DIR"
@@ -83,6 +84,7 @@ workflow wisp {
         longitudinal_sample_id:  "Overrides the longitudinal sample id, which is otherwise read from the alignment's read-group SM tag"
         sequencing_platform:     "Platform of the primary pair: ILLUMINA, ULTIMA or SBX. Read from the read-group PL tag when not set. The tumour and the normal must agree, because AMBER and SAGE are each given both in one call"
         longitudinal_sequencing_platform: "Platform of the longitudinal sample, which may differ from the primary's. Read from its read-group PL tag when not set"
+        use_primary_filters:     "Whether the longitudinal stage force-calls the primary's filtered site list rather than its full call set. The primary stage always writes both, so this only chooses between them. A tarball made before filtering existed carries only the full set, and a run then falls back to it with a note"
         use_copy_number:         "Whether WISP is also asked for COPY_NUMBER. Off by default, so WISP reports somatic-variant evidence alone and COBALT does not run on the longitudinal sample. Cannot be combined with further samples"
         hmftools_log_level:      "Log level passed to every tool: ERROR, WARN, INFO, DEBUG or TRACE"
         container_binds:         "Extra host paths to bind into every container, each reduced to its filesystem root. Rarely needed, and empty is the normal case: the task directory, the reference data and wherever the alignments really live are all discovered and bound automatically"
@@ -393,10 +395,17 @@ workflow wisp {
                 container_binds = all_binds
         }
 
+        call pre_filtering {
+            input:
+                tumor_id     = select_first([probe_tumor.sample_id]),
+                purple_files = purple.purple_files
+        }
+
         call pack_primary {
             input:
                 tumor_id     = select_first([probe_tumor.sample_id]),
-                purple_files = purple.purple_files,
+                purple_files = flatten([purple.purple_files,
+                                        [pre_filtering.prefiltered_vcf, pre_filtering.prefiltered_tbi]]),
                 amber_files  = amber_primary.amber_files,
                 purple_plots = purple.purple_plots,
                 amber_plots  = amber_primary.amber_plots,
@@ -411,7 +420,15 @@ workflow wisp {
 
     if (run_longitudinal) {
         String primary_id = select_first([probe_tumor.sample_id, extract_primary.tumor_id])
-        Array[File] primary_purple = select_first([purple.purple_files, extract_primary.purple_files])
+        # The filtered call set is written beside PURPLE's output rather than by PURPLE, so
+        # the whole-genome modes have to add it here. PE takes both from the archive, which
+        # already carries it. Without this the two modes would read different files.
+        Array[File] wg_primary_purple = flatten([
+            select_first([purple.purple_files, []]),
+            select_all([pre_filtering.prefiltered_vcf, pre_filtering.prefiltered_tbi])])
+        Array[File] primary_purple = if defined(purple.purple_files)
+                                     then wg_primary_purple
+                                     else select_first([extract_primary.purple_files])
 
         if (! defined(longitudinal_redux_dir)) {
             call redux as redux_longitudinal {
@@ -501,6 +518,7 @@ workflow wisp {
                     longitudinal_bam = measured_bams[i],
                     longitudinal_bai = measured_bais[i],
                     longitudinal_tsvs = measured_tsv_groups[i],
+                    use_primary_filters = use_primary_filters,
                     platform         = longitudinal_platform,
                     genome_fasta     = genome,
                     genome_version   = genome_version,
@@ -549,6 +567,7 @@ workflow wisp {
         File? primary_output = pack_primary.tarball
         File? primary_somatic_vcf = purple.somatic_vcf
         File? primary_purity = purple.purity_tsv
+        File? primary_site_report = pre_filtering.site_report
         File? longitudinal_append_vcf = longitudinal_append
         File? wisp_summary = collect_wisp.summary
         File? wisp_snv_summary = collect_wisp.snv_summary
@@ -557,7 +576,7 @@ workflow wisp {
 
     meta {
         author: "Gavin Peng"
-        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_snv_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header must order the called contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine; and a disagreement confined to the decoys that follow chr1..chrM is reported as a note rather than refused, because no variant is called there.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Further samples in one run\n\nTwo inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.\n\n`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites by its own SAGE append and estimated by its own WISP call, and `wisp_summary` is the collected table with a row per sample. One call each rather than one for all: the estimator reads a single somatic VCF, so measuring several samples together would mean appending them together, and a single append holds one alignment reader per sample for every region it works on, which exhausts its heap on a pool. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.\n\nThe tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so it is off by default and the flag exists to let the two be compared.\n\nIt cannot be combined with further samples, and a run that asks for both is refused before any tool starts. One WISP call measures every sample and takes one set of purity methods, while COBALT runs only on the longitudinal sample, so the further samples would be asked for copy-number evidence that was never produced."
+        description: "SNV-based MRD detection with the Hartwig WiGiTS tools, run as discrete tasks rather than through a pipeline engine.\n\nThe chart is a declaration-level view: every box is one Cromwell task running one tool in its own container, and the dashed clusters are the mode conditionals. Tasks that only prepare or check inputs are hidden -- `resolve_resources`, `probe_alignments`, `validate_inputs`, `stage_redux_dir`, `extract_primary`, `pack_primary`. Diagram source is Graphviz, in docs/.\n\nA primary tumour is called against its matched normal and fitted with PURPLE, producing a somatic call set. A longitudinal (plasma) sample is then force-called at exactly those sites and WISP estimates the tumour fraction they support. Copy-number and LOH evidence are deliberately out of scope: WISP is asked for SOMATIC_VARIANT and, optionally, COPY_NUMBER.\n\n## Modes\n\n| mode | inputs | produces |\n|---|---|---|\n| `WG` | `tumor_alignments`, `normal_alignments` | `primary_output` tarball for later `PE` runs |\n| `PE` | `longitudinal_alignments`, `primary_tarball` | `wisp_summary`, `wisp_snv_summary`, `wisp_output` |\n| `WG_PE` | all three alignment sets | both, in sequence |\n\n`normal_alignments` is mandatory for `WG` and `WG_PE`, with no override. Without a matched normal SAGE cannot subtract germline variants, the somatic call set fills with germline sites, and WISP measures those in the patient's own cfDNA and reports a large spurious tumour fraction.\n\nRun `WG` once per primary and `PE` once per timepoint. `WG_PE` suits a single-timepoint case, where re-running the primary costs nothing extra.\n\n## Inputs the alignments must satisfy\n\nSeveral properties are read from the alignments and checked before any expensive task runs, because getting them wrong produces a plausible but wrong answer rather than a failure:\n\n- **The tumour and the normal must share a sequencing platform.** AMBER and SAGE are each given both in one call and take a single platform. The longitudinal sample is only ever processed on its own, so it may differ -- an Illumina primary with an Ultima plasma is a valid run, and each sample is then processed with its own error model while the site list still comes from the primary. Set `sequencing_platform` and `longitudinal_sequencing_platform` to override what the read-group PL tags report.\n- **Mate CIGAR (MC) tags must be present**, wherever REDUX is going to mark duplicates. Without them it marks them wrong and reports nothing unusual. Alignments produced by bwa-mem2 carry them. Ultima is exempt, its reads being single-ended, and so is a sample supplied as a REDUX directory.\n- **The header must order the called contigs the same way the reference does.** The tools address a contig by its position in the alignment header, so a header sorted differently -- chr10 before chr2, as an alphabetically sorted reference produces -- makes them read the wrong contig and discard the evidence without failing. Only the relative order of the contigs the two have in common is checked, so a header carrying fewer decoys than the reference is fine; and a disagreement confined to the decoys that follow chr1..chrM is reported as a note rather than refused, because no variant is called there.\n\nAlignments may be BAM or CRAM.\n\n## Skipping REDUX\n\nA sample that has already been through REDUX is supplied as `tumor_redux_dir`, `normal_redux_dir` or `longitudinal_redux_dir` instead of its alignments, and REDUX does not run for it. The directory must hold `{sample_id}.redux.bam` with its index and the recalibration, jitter and microsatellite tables, all named by the same prefix; that prefix has to equal what the alignment reports as its read-group SM tag, because the tools resolve the files by prefix but read the sample from the header. Each sample takes one route or the other, never both.\n\n## Further samples in one run\n\nTwo inputs feed this, and they add up. `additional_redux_dirs` takes whole REDUX directories: every sample in each is estimated, which is the form a control pool usually wants. `additional_samples` names individual samples, for a subset of a pool or for samples spread across directories.\n\n`additional_samples` takes samples to estimate alongside the longitudinal one: other timepoints from the same patient, or tumour-free controls that establish the background a result is read against. Each entry names a sample id and the REDUX output directory holding it, so several entries may share one directory, which is how a control pool is usually stored. Each is force-called at the primary's somatic sites by its own SAGE append and estimated by its own WISP call, and `wisp_summary` is the collected table with a row per sample. One call each rather than one for all: the estimator reads a single somatic VCF, so measuring several samples together would mean appending them together, and a single append holds one alignment reader per sample for every region it works on, which exhausts its heap on a pool. They are given as REDUX output rather than alignments because a control pool is reused across subjects and re-running REDUX over it each time is repeated work.\n\nThe tool takes one patient id for the whole invocation, so samples from another donor are labelled with this donor's id. That is a label rather than an input to the estimate, but it makes the summary misleading if controls come from elsewhere.\n\n## Filtering the primary's call set\n\nThe primary stage writes a second somatic VCF beside PURPLE's, `{sample}.purple.somatic.prefiltered.vcf.gz`, carrying the conditions the estimator documents: mappability, repeat count, SNV only, tier, nearby indel, subclonal, and a germline test. Records are flagged rather than dropped, so the file says per site which condition it failed and a reader selects the records whose FILTER is PASS. Both VCFs go into `primary_output`, and `primary_site_report` gives the per-filter breakdown -- what each condition costs, and how many sites remain usable for MRD.\n\nNothing is dropped: every condition is carried in the FILTER column, and the estimator reads only the records marked PASS. Most of the conditions it would apply for itself, so flagging those changes nothing while keeping the reason visible. The germline one it cannot apply, having no view of the matched normal, and a germline site left in the call set is measured in the patient's own cfDNA and read as tumour -- those sites sit near half the reads, so a handful can outweigh hundreds of genuine markers at a fraction of a per cent.\n\nThe germline test assumes the matched normal is free of tumour. Where it is not, true somatic sites appear in the normal and are filtered as germline, so a contaminated normal makes this harmful rather than merely redundant. The unfiltered call set is kept beside the filtered one for that reason, and `use_primary_filters` set false recovers it.\n\n`use_primary_filters` chooses which of the two the longitudinal stage force-calls. A tarball made before filtering existed carries only the full call set, and such a run falls back to it with a note rather than failing.\n\n## Copy number\n\n`use_copy_number` adds COPY_NUMBER to the purity methods WISP applies, at the cost of running COBALT on the longitudinal sample. Somatic-variant evidence alone is what the assay reports, so it is off by default and the flag exists to let the two be compared.\n\nIt cannot be combined with further samples, and a run that asks for both is refused before any tool starts. One WISP call measures every sample and takes one set of purity methods, while COBALT runs only on the longitudinal sample, so the further samples would be asked for copy-number evidence that was never produced."
         dependencies: [
             {name: "wisp/3.0.0", url: "https://github.com/hartwigmedical/hmftools/tree/master/wisp"},
             {name: "apptainer/1.4.5", url: "https://apptainer.org/"},
@@ -581,6 +600,10 @@ workflow wisp {
             primary_somatic_vcf: {
                 description: "PURPLE somatic small-variant VCF for the primary tumour, the call set the longitudinal stage measures. Named from the primary tumour sample id. WG and WG_PE only.",
                 vidarr_label: "primary_somatic_vcf"
+            },
+            primary_site_report: {
+                description: "Per-filter breakdown of the primary's call set: how many sites survive each condition in turn, and how many remain usable for MRD. WG and WG_PE only.",
+                vidarr_label: "primary_site_report"
             },
             primary_purity: {
                 description: "PURPLE purity and ploidy fit for the primary tumour. WG and WG_PE only.",
@@ -1529,6 +1552,11 @@ task redux {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The engine localizes an alignment and its index into separate directories, but the
@@ -1709,6 +1737,11 @@ task amber {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The tools find an index by its position beside the alignment, so both are linked
@@ -1868,6 +1901,11 @@ task cobalt {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         ln -s "~{tumor_bam}" "~{tumor_id}.redux.~{tumor_ext}"
@@ -2037,6 +2075,11 @@ task sage_somatic {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # SAGE takes the recalibration and jitter tables from the directory holding the
@@ -2206,6 +2249,11 @@ task pave_somatic {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index is resolved beside the VCF, so both go into one directory of their own
@@ -2363,6 +2411,11 @@ task purple {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # PURPLE takes directories, so the upstream outputs are relinked into the shapes it
@@ -2430,6 +2483,181 @@ COMMAND
         File purple_plots = "~{tumor_id}.purple_plots.tar.gz"
     }
 }
+
+# Applies the primary filters WISP documents to the primary's somatic call set, writing a
+# second VCF beside the original. Only the germline condition changes anything WISP would
+# not work out for itself: it reads the matched normal's genotype column, which WISP is
+# never given, so the sites it removes would otherwise be measured in the patient's own
+# cfDNA and read as tumour. The rest are applied so the report can say what each costs.
+# Records are soft-flagged rather than dropped, so the file says per site which conditions
+# it failed and a consumer selects FILTER="PASS".
+task pre_filtering {
+    input {
+        String tumor_id
+        Array[File] purple_files
+        Int jobMemory = 4
+        Int cores = 1
+        Int timeout = 2
+        String modules = "bcftools/1.9"
+    }
+
+    parameter_meta {
+        tumor_id:     "Primary tumour sample id, which names the VCF and identifies its column"
+        purple_files: "Primary PURPLE output, from which the somatic VCF and its index are taken"
+        jobMemory:    "Memory allocated to the job, in GB"
+        cores:        "Number of CPUs allocated to the job"
+        timeout:      "Maximum run time, in hours"
+        modules:      "Environment modules to load"
+    }
+
+    command <<<
+        set -euo pipefail
+
+        VCF_NAME="~{tumor_id}.purple.somatic.vcf.gz"
+        OUT_NAME="~{tumor_id}.purple.somatic.prefiltered.vcf.gz"
+        REPORT="~{tumor_id}.primary_site_report.txt"
+        : > "${REPORT}"
+
+        mkdir -p purple
+        while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple/; done < ~{write_lines(purple_files)}
+        SRC_VCF="purple/${VCF_NAME}"
+
+        # Anything that stops us filtering is reported and then ignored: an unusable VCF
+        # must not take down a run that would otherwise produce a result. The caller falls
+        # back to the unfiltered call set.
+        give_up() {
+            echo "NOTE: pre-filtering skipped: $1" >&2
+            { echo "prefiltering: SKIPPED"; echo "reason: $1"; } >> "${REPORT}"
+            cp "${SRC_VCF}" "${OUT_NAME}" 2>/dev/null || : > "${OUT_NAME}"
+            cp "${SRC_VCF}.tbi" "${OUT_NAME}.tbi" 2>/dev/null || : > "${OUT_NAME}.tbi"
+            echo "-1" > usable_sites.txt
+            exit 0
+        }
+
+        [ -s "${SRC_VCF}" ] || give_up "no ${VCF_NAME} among the PURPLE files"
+
+        # Sample columns resolved BY NAME, never by position. With the columns the other way
+        # round a fixed index tests the tumour instead of the normal, which removes the whole
+        # call set and yields a confident MRD-negative with no error anywhere. A failure here
+        # reports the tool's own message rather than a count, because an empty list means
+        # bcftools did not run, not that the VCF has no samples.
+        if ! bcftools query -l "${SRC_VCF}" > samples.txt 2> bcftools.err; then
+            give_up "bcftools could not read the VCF: $(head -1 bcftools.err)"
+        fi
+        mapfile -t SAMPLES < samples.txt
+        [ "${#SAMPLES[@]}" -eq 2 ] || give_up "expected 2 samples in ${VCF_NAME}, found ${#SAMPLES[@]}"
+        TUM_IDX=""; NORM_IDX=""
+        for i in 0 1; do
+            if [ "${SAMPLES[$i]}" = "~{tumor_id}" ]; then TUM_IDX=$i; NORM_IDX=$((1 - i)); fi
+        done
+        [ -n "${TUM_IDX}" ] || give_up "tumour '~{tumor_id}' not among VCF samples: ${SAMPLES[*]}"
+
+        HDR=$(bcftools view -h "${SRC_VCF}")
+        has() { grep -q "^##$1=<ID=$2," <<<"${HDR}"; }
+
+        # The quality field has been renamed across hmftools versions. ARCBQ is what current
+        # SAGE emits and what the filter is documented against; ABQ is the older equivalent.
+        # RABQ is deliberately not accepted: it is the raw, pre-recalibration value, so the
+        # threshold would be applied to the wrong quantity. Skipping the filter and saying so
+        # beats filtering on a field that does not mean what the threshold assumes.
+        QUAL=""
+        if has FORMAT ARCBQ; then QUAL=ARCBQ; elif has FORMAT ABQ; then QUAL=ABQ; fi
+        REPC_FIELDS=()
+        has INFO RC_REPC && REPC_FIELDS+=(RC_REPC)
+        has INFO REP_C   && REPC_FIELDS+=(REP_C)
+
+        # tag|mode|expression. mode i flags when the expression is false, e when it is true.
+        # The germline filter has to be an exclude, because bcftools cannot negate an indexed
+        # FORMAT expression. Tags land in the FILTER column, so they match the condition names
+        # the tool's documentation uses.
+        FILTERS=()
+        has INFO MAPPABILITY  && FILTERS+=("MAPPABILITY|i|INFO/MAPPABILITY>=0.5")
+        for rf in "${REPC_FIELDS[@]+"${REPC_FIELDS[@]}"}"; do
+            FILTERS+=("${rf}|i|INFO/${rf}<4 || INFO/${rf}==\".\"")
+        done
+        FILTERS+=("NON_SNV|i|TYPE=\"snp\"")
+        has INFO TIER         && FILTERS+=("LOW_CONFIDENCE|i|INFO/TIER!=\"LOW_CONFIDENCE\"")
+        has INFO NEARBY_INDEL && FILTERS+=("NEARBY_INDEL|i|INFO/NEARBY_INDEL=0")
+        if has INFO SUBCL && has INFO PURPLE_VCN; then
+            FILTERS+=("SUBCLONAL|i|INFO/SUBCL<=0.5 || INFO/PURPLE_VCN>=0.7")
+        fi
+        [ -n "${QUAL}" ] && FILTERS+=("GERMLINE|e|(FORMAT/AD[${NORM_IDX}:1]/FORMAT/DP[${NORM_IDX}]) > 0.01 & FORMAT/${QUAL}[${NORM_IDX}:1] > 30")
+
+        {
+            echo "primary sample: ~{tumor_id}"
+            echo "vcf:            ${VCF_NAME}"
+            echo "samples:        [0]=${SAMPLES[0]} [1]=${SAMPLES[1]}"
+            echo "normal column:  ${NORM_IDX} (${SAMPLES[$NORM_IDX]})"
+            echo "qual field:     ${QUAL:-NONE, germline filter not applied}"
+            echo "repeat fields:  ${REPC_FIELDS[*]+"${REPC_FIELDS[*]}"}"
+            echo
+            echo "Two of the conditions are measurements on the cfDNA sample and cannot be"
+            echo "evaluated here: average edge distance and the quality ratio. The tool"
+            echo "applies both itself, so the count below is an upper bound on what it uses."
+            echo
+            printf '%-16s %10s %10s\n' "filter" "remaining" "lost"
+        } >> "${REPORT}"
+
+        WORK=$(mktemp -d)
+        TOTAL=$(bcftools view -H "${SRC_VCF}" | wc -l)
+        printf '%-16s %10s %10s\n' "(total)" "${TOTAL}" "-" >> "${REPORT}"
+
+        # Only this first step drops records. Everything after soft-flags, so the record set
+        # is fixed here and later steps only add tags.
+        bcftools view -i 'FILTER="PASS"' -Oz -o "${WORK}/cur.vcf.gz" "${SRC_VCF}"
+        bcftools index -t -f "${WORK}/cur.vcf.gz"
+        PREV=$(bcftools view -H "${WORK}/cur.vcf.gz" | wc -l)
+        KEPT=${PREV}
+        printf '%-16s %10s %10s\n' "PASS" "${PREV}" "$(( TOTAL - PREV ))" >> "${REPORT}"
+
+        for entry in "${FILTERS[@]}"; do
+            tag="${entry%%|*}"; rest="${entry#*|}"; mode="${rest%%|*}"; expr="${rest#*|}"
+            # A field can be in the header and still be unusable by this bcftools build, so a
+            # failing expression is reported and skipped rather than killing the run.
+            if ! bcftools filter -s "${tag}" -m + "-${mode}" "${expr}" \
+                 -Oz -o "${WORK}/next.vcf.gz" "${WORK}/cur.vcf.gz" 2>"${WORK}/err"; then
+                printf '%-16s %10s %10s\n' "${tag}" "SKIPPED" "$(head -1 "${WORK}/err" | cut -c1-40)" >> "${REPORT}"
+                continue
+            fi
+            mv "${WORK}/next.vcf.gz" "${WORK}/cur.vcf.gz"
+            bcftools index -t -f "${WORK}/cur.vcf.gz"
+            n=$(bcftools view -H -i 'FILTER="PASS"' "${WORK}/cur.vcf.gz" | wc -l)
+            printf '%-16s %10s %10s\n' "${tag}" "${n}" "$(( PREV - n ))" >> "${REPORT}"
+            PREV=${n}
+        done
+
+        cp "${WORK}/cur.vcf.gz" "${OUT_NAME}"
+        bcftools index -t -f "${OUT_NAME}"
+        echo "${PREV}" > usable_sites.txt
+
+        { echo
+          echo "sites usable for MRD: ${PREV} of ${TOTAL}"
+          echo
+          echo "written as ${OUT_NAME}, alongside the unmodified ${VCF_NAME}."
+          echo "That file holds all ${KEPT} PASS-in-purple records; the ones that failed a"
+          echo "condition carry it in the FILTER column rather than being dropped, so select"
+          echo "FILTER=\"PASS\" for the ${PREV} usable sites."
+        } >> "${REPORT}"
+
+        rm -rf "${WORK}"
+        cat "${REPORT}" >&2
+    >>>
+
+    runtime {
+        memory: "~{jobMemory} GB"
+        cpu: "~{cores}"
+        timeout: "~{timeout}"
+        modules: "~{modules}"
+    }
+
+    output {
+        File prefiltered_vcf = "~{tumor_id}.purple.somatic.prefiltered.vcf.gz"
+        File prefiltered_tbi = "~{tumor_id}.purple.somatic.prefiltered.vcf.gz.tbi"
+        File site_report = "~{tumor_id}.primary_site_report.txt"
+        Int usable_sites = read_int("usable_sites.txt")
+    }
+}
+
 
 # Packs the primary-stage results a later longitudinal run needs, so that one primary can be
 # computed once and measured against many timepoints.
@@ -2568,6 +2796,7 @@ task sage_append {
         File longitudinal_bam
         File longitudinal_bai
         Array[File] longitudinal_tsvs
+        Boolean use_primary_filters
         String platform
         String genome_fasta
         String genome_version
@@ -2589,6 +2818,7 @@ task sage_append {
         purple_files:       "Primary PURPLE output, from which the somatic VCF and its index are taken"
         longitudinal_bam:   "REDUX alignment for that sample"
         longitudinal_bai:   "Index for that alignment"
+        use_primary_filters: "Whether to force-call the primary's filtered site list rather than its full call set. The chosen file is staged under the name the tool resolves, so this selects a file rather than changing an argument"
         longitudinal_tsvs:  "That sample's REDUX tables. Their absence would silently switch the tool to skipping recalibration and jitter fitting, changing the depths it reports, so they are required here"
         platform:           "ILLUMINA, ULTIMA or SBX"
         genome_fasta:       "Reference genome FASTA"
@@ -2658,12 +2888,34 @@ task sage_append {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         # The index has to sit beside the VCF, and the recalibration and jitter tables beside
         # the alignment.
         mkdir -p purple_primary
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -s "${f}" purple_primary/; done < ~{write_lines(purple_files)}
+
+        # The tool resolves the somatic VCF by exact name, so the choice is made by staging
+        # one file or the other under that name rather than by changing the argument. A
+        # tarball made before filtering existed carries only the full call set; say so and
+        # use it rather than failing a run that is otherwise complete.
+        wanted="purple_primary/~{primary_id}.purple.somatic.prefiltered.vcf.gz"
+        canonical="purple_primary/~{primary_id}.purple.somatic.vcf.gz"
+        if ~{if use_primary_filters then "true" else "false"}; then
+            if [ -s "${wanted}" ]; then
+                rm -f "${canonical}" "${canonical}.tbi"
+                ln -s "$(basename "${wanted}")" "${canonical}"
+                ln -s "$(basename "${wanted}").tbi" "${canonical}.tbi"
+                echo "force-calling the filtered site list" >&2
+            else
+                echo "NOTE: no prefiltered VCF in this primary; using the full call set" >&2
+            fi
+        fi
         while IFS= read -r f; do [ -n "${f}" ] || continue; ln -sf "${f}" .; done < ~{write_lines(longitudinal_tsvs)}
 
         ln -sf "~{longitudinal_bam}" "~{longitudinal_id}.redux.~{long_ext}"
@@ -2819,6 +3071,11 @@ task wisp_purity {
         }
 
         add_bind_root "$(pwd)"
+        # The scheduler's temporary directory is not necessarily on the same filesystem as
+        # the task directory, and the engine points the tool's own temporary files at it, so
+        # it has to be reachable from inside the container too.
+        add_bind_root "${container_tmp}"
+        add_bind_root "${TMPDIR:-}"
         while IFS= read -r b; do add_bind_root "${b}"; done < ~{write_lines(container_binds)}
 
         mkdir -p purple_primary sage_append_longitudinal redux_longitudinal cobalt_longitudinal wisp

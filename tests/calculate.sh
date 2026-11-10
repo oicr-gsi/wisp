@@ -28,11 +28,14 @@ for tsv in *.purple.purity.tsv *.wisp.summary.tsv *.wisp_SNV_summary.tsv; do
     cat "$tsv"
 done
 
-# What the preflight decided: mode, platforms, sample ids, primary provenance.
+# What the preflight decided: mode, platforms, sample ids, primary provenance. An absolute
+# path is reduced to its last component: which reference was used is worth recording, where
+# it was installed is not, and the install root differs between sites and between builds of
+# the same module.
 for log in *.validation.log; do
     [ -e "$log" ] || continue
     echo "## ${log}"
-    cat "$log"
+    sed -E 's#(/[^/[:space:]]+)+/([^/[:space:]]+)#\2#g' "$log"
 done
 
 # Archive members only; their contents are covered above where they matter.

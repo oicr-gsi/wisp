@@ -91,6 +91,9 @@ site list or the full call set.
 
 ## [3.4.1] - 2026-11-10
 ### Fixed
+- Unpacking an archive no longer restores ownership, permissions or timestamps. A mounted
+object store does not carry them and refuses to set them, which failed the extraction;
+nothing downstream reads any of the three.
 - The regression summary records the reference by name rather than by install path. The
 path differs between sites and between builds of the same module, so a baseline taken on
 one cluster could not match a run on another although nothing about the result differed.

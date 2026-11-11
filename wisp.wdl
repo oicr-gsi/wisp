@@ -760,7 +760,8 @@ task collect_wisp {
             [ -n "${f}" ] || continue
             name=$(basename "${f}" .wisp.tar.gz)
             mkdir -p "wisp_all/${name}"
-            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
+            tar --no-same-owner --no-same-permissions -m \
+                -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
         done < ~{write_lines(tarballs)}
         tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
 
@@ -2741,8 +2742,13 @@ task extract_primary {
     command <<<
         set -euo pipefail
 
+        # Ownership, permissions and timestamps are not restored. A mounted object store
+        # does not carry them and refuses to set them, which fails the extraction; nothing
+        # downstream reads any of the three. Off a mount they are the defaults already for
+        # anyone but root, apart from the timestamps.
         mkdir -p primary
-        tar -xzf "~{tarball}" -C primary --strip-components=1
+        tar --no-same-owner --no-same-permissions -m \
+            -xzf "~{tarball}" -C primary --strip-components=1
 
         purity=$(find primary/purple -name '*.purple.purity.tsv' | head -1)
         if [ -z "${purity}" ]; then

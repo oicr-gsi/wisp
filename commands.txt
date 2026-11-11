@@ -32,6 +32,22 @@ This section lists command(s) run by wisp workflow
 ```
         set -euo pipefail
 
+        mkdir -p "~{output_directory}"
+
+        # Read from a file rather than expanded onto the command line: the list is empty
+        # for a mode that produced none of these, and an empty expansion is a syntax
+        # error rather than a loop that does nothing.
+        manifest="~{outputFileNamePrefix}_copied_outputs.txt"
+        : > "${manifest}"
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            cp -f "${f}" "~{output_directory}/"
+            echo "~{output_directory}/$(basename "${f}")" >> "${manifest}"
+        done < ~{write_lines(files)}
+```
+```
+        set -euo pipefail
+
         # Header from the first, rows from all of them, in the order they were given so the
         # longitudinal sample stays on top. Each row is labelled with its sample, which the
         # tool writes in the filename rather than in the file.

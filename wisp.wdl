@@ -58,6 +58,7 @@ workflow wisp {
         String? sequencing_platform
         String? longitudinal_sequencing_platform
         Boolean use_copy_number = false
+        String? outputDirectory
         Boolean use_primary_filters = true
         String hmftools_log_level = "INFO"
         Array[String] container_binds = []
@@ -85,6 +86,7 @@ workflow wisp {
         sequencing_platform:     "Platform of the primary pair: ILLUMINA, ULTIMA or SBX. Read from the read-group PL tag when not set. The tumour and the normal must agree, because AMBER and SAGE are each given both in one call"
         longitudinal_sequencing_platform: "Platform of the longitudinal sample, which may differ from the primary's. Read from its read-group PL tag when not set"
         use_primary_filters:     "Whether the longitudinal stage force-calls the primary's filtered site list rather than its full call set. The primary stage always writes both, so this only chooses between them. A tarball made before filtering existed carries only the full set, and a run then falls back to it with a note"
+        outputDirectory:         "Absolute path, on a filesystem the compute nodes can see, to copy the workflow outputs into. Unset, nothing is copied and the outputs are read from where the engine wrote them, which is what a site with a shared filesystem wants. Set it where the engine's own final-outputs setting is unavailable, or where it would move the data the long way round"
         use_copy_number:         "Whether WISP is also asked for COPY_NUMBER. Off by default, so WISP reports somatic-variant evidence alone and COBALT does not run on the longitudinal sample. Cannot be combined with further samples"
         hmftools_log_level:      "Log level passed to every tool: ERROR, WARN, INFO, DEBUG or TRACE"
         container_binds:         "Extra host paths to bind into every container, each reduced to its filesystem root. Rarely needed, and empty is the normal case: the task directory, the reference data and wherever the alignments really live are all discovered and bound automatically"
@@ -562,6 +564,27 @@ workflow wisp {
         }
     }
 
+    # Outside both mode conditionals, so one list covers every mode. Every entry reads as
+    # optional here, even those a mode always produces, and select_all keeps the ones this
+    # run actually made.
+    if (defined(outputDirectory)) {
+        call copy_outputs {
+            input:
+                files = select_all([
+                    validate_inputs.log,
+                    pack_primary.tarball,
+                    purple.somatic_vcf,
+                    purple.purity_tsv,
+                    pre_filtering.site_report,
+                    longitudinal_append,
+                    collect_wisp.summary,
+                    collect_wisp.snv_summary,
+                    collect_wisp.tarball]),
+                output_directory = select_first([outputDirectory]),
+                outputFileNamePrefix = outputFileNamePrefix
+        }
+    }
+
     output {
         File validation_log = validate_inputs.log
         File? primary_output = pack_primary.tarball
@@ -572,6 +595,7 @@ workflow wisp {
         File? wisp_summary = collect_wisp.summary
         File? wisp_snv_summary = collect_wisp.snv_summary
         File? wisp_output = collect_wisp.tarball
+        File? copy_manifest = copy_outputs.manifest
     }
 
     meta {
@@ -624,6 +648,10 @@ workflow wisp {
             wisp_output: {
                 description: "Full WISP output directory as a tarball, including the per-variant table and plots. PE and WG_PE only.",
                 vidarr_label: "wisp_output"
+            },
+            copy_manifest: {
+                description: "Where each output was copied to. Produced only when outputDirectory is set.",
+                vidarr_label: "copy_manifest"
             }
         }
     }
@@ -708,6 +736,56 @@ task resolve_resources {
 # Puts every sample's estimate in one table. WISP is run once per sample, so a run with
 # further timepoints or controls produces one summary each; what a reader wants is a single
 # table with a row per sample and one archive holding the rest.
+task copy_outputs {
+    input {
+        Array[File] files
+        String output_directory
+        String outputFileNamePrefix
+        Int jobMemory = 4
+        Int cores = 1
+        Int timeout = 4
+        String modules = ""
+    }
+
+    parameter_meta {
+        files:                "Workflow outputs to copy"
+        output_directory:     "Absolute destination directory, on a filesystem the compute nodes can see. Created if it is not there"
+        outputFileNamePrefix: "Prefix naming the manifest"
+        jobMemory:            "Memory allocated to the job, in GB"
+        cores:                "Number of CPUs allocated to the job"
+        timeout:              "Maximum run time, in hours"
+        modules:              "Environment modules to load"
+    }
+
+    command <<<
+        set -euo pipefail
+
+        mkdir -p "~{output_directory}"
+
+        # Read from a file rather than expanded onto the command line: the list is empty
+        # for a mode that produced none of these, and an empty expansion is a syntax
+        # error rather than a loop that does nothing.
+        manifest="~{outputFileNamePrefix}_copied_outputs.txt"
+        : > "${manifest}"
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            cp -f "${f}" "~{output_directory}/"
+            echo "~{output_directory}/$(basename "${f}")" >> "${manifest}"
+        done < ~{write_lines(files)}
+    >>>
+
+    runtime {
+        memory: "~{jobMemory} GB"
+        cpu: "~{cores}"
+        timeout: "~{timeout}"
+        modules: "~{modules}"
+    }
+
+    output {
+        File manifest = "~{outputFileNamePrefix}_copied_outputs.txt"
+    }
+}
+
 task collect_wisp {
     input {
         Array[String] sample_ids

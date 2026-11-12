@@ -201,6 +201,11 @@
             ],
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
+            "wisp.outputDirectory": null,
+            "wisp.copy_outputs.jobMemory": null,
+            "wisp.copy_outputs.cores": null,
+            "wisp.copy_outputs.timeout": null,
+            "wisp.copy_outputs.modules": null,
             "wisp.use_copy_number": null,
             "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
@@ -221,6 +226,14 @@
         },
         "id": "wisp_test01",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -298,7 +311,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.0/test01.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.1/test01.metrics",
                 "type": "script"
             }
         ]
@@ -489,6 +502,11 @@
             "wisp.tumor_alignments": null,
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
+            "wisp.outputDirectory": null,
+            "wisp.copy_outputs.jobMemory": null,
+            "wisp.copy_outputs.cores": null,
+            "wisp.copy_outputs.timeout": null,
+            "wisp.copy_outputs.modules": null,
             "wisp.use_copy_number": true,
             "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
@@ -509,6 +527,14 @@
         },
         "id": "wisp_test02",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -586,7 +612,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.0/test02.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.1/test02.metrics",
                 "type": "script"
             }
         ]
@@ -750,6 +776,11 @@
             "wisp.tumor_alignments": null,
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
+            "wisp.outputDirectory": null,
+            "wisp.copy_outputs.jobMemory": null,
+            "wisp.copy_outputs.cores": null,
+            "wisp.copy_outputs.timeout": null,
+            "wisp.copy_outputs.modules": null,
             "wisp.use_copy_number": false,
             "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
@@ -770,6 +801,14 @@
         },
         "id": "wisp_test03",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -847,7 +886,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.0/test03.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.1/test03.metrics",
                 "type": "script"
             }
         ]
@@ -1081,6 +1120,11 @@
             ],
             "wisp.tumor_redux_dir": null,
             "wisp.tumor_sample_id": null,
+            "wisp.outputDirectory": null,
+            "wisp.copy_outputs.jobMemory": null,
+            "wisp.copy_outputs.cores": null,
+            "wisp.copy_outputs.timeout": null,
+            "wisp.copy_outputs.modules": null,
             "wisp.use_copy_number": true,
             "wisp.use_primary_filters": null,
             "wisp.validate_inputs.cores": null,
@@ -1101,6 +1145,14 @@
         },
         "id": "wisp_test04",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -1178,7 +1230,7 @@
             {
                 "metrics_calculate": "@CHECKOUT@/tests/calculate.sh",
                 "metrics_compare": "@CHECKOUT@/tests/compare.sh",
-                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.0/test04.metrics",
+                "output_metrics": "/.mounts/labs/gsi/testdata/wisp/output_metrics/3.4.1/test04.metrics",
                 "type": "script"
             }
         ]

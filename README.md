@@ -108,6 +108,7 @@ Parameter|Value|Default|Description
 `sequencing_platform`|String?|None|Platform of the primary pair: ILLUMINA, ULTIMA or SBX. Read from the read-group PL tag when not set. The tumour and the normal must agree, because AMBER and SAGE are each given both in one call
 `longitudinal_sequencing_platform`|String?|None|Platform of the longitudinal sample, which may differ from the primary's. Read from its read-group PL tag when not set
 `use_copy_number`|Boolean|false|Whether WISP is also asked for COPY_NUMBER. Off by default, so WISP reports somatic-variant evidence alone and COBALT does not run on the longitudinal sample. Cannot be combined with further samples
+`outputDirectory`|String?|None|Absolute path, on a filesystem the compute nodes can see, to copy the workflow outputs into. Unset, nothing is copied and the outputs are read from where the engine wrote them, which is what a site with a shared filesystem wants. Set it where the engine's own final-outputs setting is unavailable, or where it would move the data the long way round
 `use_primary_filters`|Boolean|true|Whether the longitudinal stage force-calls the primary's filtered site list rather than its full call set. The primary stage always writes both, so this only chooses between them. A tarball made before filtering existed carries only the full set, and a run then falls back to it with a note
 `hmftools_log_level`|String|"INFO"|Log level passed to every tool: ERROR, WARN, INFO, DEBUG or TRACE
 `container_binds`|Array[String]|[]|Extra host paths to bind into every container, each reduced to its filesystem root. Rarely needed, and empty is the normal case: the task directory, the reference data and wherever the alignments really live are all discovered and bound automatically
@@ -253,6 +254,10 @@ Parameter|Value|Default|Description
 `collect_wisp.cores`|Int|1|Number of CPUs allocated to the job
 `collect_wisp.timeout`|Int|2|Maximum run time, in hours
 `collect_wisp.modules`|String|"wisp/3.0.0"|Environment modules to load
+`copy_outputs.jobMemory`|Int|4|Memory allocated to the job, in GB
+`copy_outputs.cores`|Int|1|Number of CPUs allocated to the job
+`copy_outputs.timeout`|Int|4|Maximum run time, in hours
+`copy_outputs.modules`|String|""|Environment modules to load
 
 
 ### Outputs
@@ -268,6 +273,7 @@ Output | Type | Description | Labels
 `wisp_summary`|File?|WISP purity estimate, a row per sample and every field the tool reports. PE and WG_PE only.|vidarr_label: wisp_summary
 `wisp_snv_summary`|File?|The same estimate reduced to the fields an SNV-MRD assessment reads: the dual-strand fields, which apply to duplex sequencing, and the copy-number fields are left out. PE and WG_PE only.|vidarr_label: wisp_snv_summary
 `wisp_output`|File?|Full WISP output directory as a tarball, including the per-variant table and plots. PE and WG_PE only.|vidarr_label: wisp_output
+`copy_manifest`|File?|Where each output was copied to. Produced only when outputDirectory is set.|vidarr_label: copy_manifest
 
 
 ## Commands
@@ -304,6 +310,22 @@ This section lists command(s) run by wisp workflow
 ```
         set -euo pipefail
 
+        mkdir -p "~{output_directory}"
+
+        # Read from a file rather than expanded onto the command line: the list is empty
+        # for a mode that produced none of these, and an empty expansion is a syntax
+        # error rather than a loop that does nothing.
+        manifest="~{outputFileNamePrefix}_copied_outputs.txt"
+        : > "${manifest}"
+        while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            cp -f "${f}" "~{output_directory}/"
+            echo "~{output_directory}/$(basename "${f}")" >> "${manifest}"
+        done < ~{write_lines(files)}
+```
+```
+        set -euo pipefail
+
         # Header from the first, rows from all of them, in the order they were given so the
         # longitudinal sample stays on top. Each row is labelled with its sample, which the
         # tool writes in the filename rather than in the file.
@@ -330,7 +352,8 @@ This section lists command(s) run by wisp workflow
             [ -n "${f}" ] || continue
             name=$(basename "${f}" .wisp.tar.gz)
             mkdir -p "wisp_all/${name}"
-            tar -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
+            tar --no-same-owner --no-same-permissions -m \
+                -xzf "${f}" -C "wisp_all/${name}" --strip-components=1
         done < ~{write_lines(tarballs)}
         tar -czf ~{outputFileNamePrefix}.wisp.tar.gz wisp_all
 
@@ -1544,8 +1567,13 @@ COMMAND
 ```
         set -euo pipefail
 
+        # Ownership, permissions and timestamps are not restored. A mounted object store
+        # does not carry them and refuses to set them, which fails the extraction; nothing
+        # downstream reads any of the three. Off a mount they are the defaults already for
+        # anyone but root, apart from the timestamps.
         mkdir -p primary
-        tar -xzf "~{tarball}" -C primary --strip-components=1
+        tar --no-same-owner --no-same-permissions -m \
+            -xzf "~{tarball}" -C primary --strip-components=1
 
         purity=$(find primary/purple -name '*.purple.purity.tsv' | head -1)
         if [ -z "${purity}" ]; then

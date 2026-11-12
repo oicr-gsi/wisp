@@ -226,6 +226,14 @@
         },
         "id": "wisp_test01",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test01_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -519,6 +527,14 @@
         },
         "id": "wisp_test02",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test02_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -785,6 +801,14 @@
         },
         "id": "wisp_test03",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test03_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {
@@ -1121,6 +1145,14 @@
         },
         "id": "wisp_test04",
         "metadata": {
+            "wisp.copy_manifest": {
+                "contents": [
+                    {
+                        "outputDirectory": "@SCRATCH@/@DATE@_Workflow_wisp_test04_@JENKINSID@"
+                    }
+                ],
+                "type": "ALL"
+            },
             "wisp.longitudinal_append_vcf": {
                 "contents": [
                     {

@@ -90,6 +90,12 @@ archive, with a report of what each condition costs and how many sites remain us
 site list or the full call set.
 
 ## [3.4.1] - 2026-11-10
+### Fixed
+- Only plain files are declared as the AMBER, COBALT and PURPLE output. A plot directory
+written as a symlink was left where the engine would try to deliver it, which fails the
+task that reads those outputs. Anything that is not a file now goes into the plot archive
+with the directories.
+
 ### Added
 - `outputDirectory`, copying the workflow outputs there and writing a manifest of where
 each one landed. Unset, nothing is copied. It exists for a site where the engine's own

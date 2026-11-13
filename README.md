@@ -1018,10 +1018,12 @@ COMMAND
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash amber.sh
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived rather than listed as an output. Tested for NOT being a
+        # file rather than for being a directory: a plot directory can be written as a
+        # symlink, which the engine cannot deliver and which a test for a directory misses.
         mkdir -p amber_extra
-        find amber -mindepth 1 -maxdepth 1 -type d -exec mv {} amber_extra/ \;
+        find amber -mindepth 1 -maxdepth 1 ! -type f -exec mv {} amber_extra/ \;
         tar -czf ~{tumor_id}.amber_plots.tar.gz -C amber_extra .
 ```
 ```
@@ -1109,10 +1111,12 @@ COMMAND
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash cobalt.sh
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived rather than listed as an output. Tested for NOT being a
+        # file rather than for being a directory: a plot directory can be written as a
+        # symlink, which the engine cannot deliver and which a test for a directory misses.
         mkdir -p cobalt_extra
-        find cobalt -mindepth 1 -maxdepth 1 -type d -exec mv {} cobalt_extra/ \;
+        find cobalt -mindepth 1 -maxdepth 1 ! -type f -exec mv {} cobalt_extra/ \;
         tar -czf ~{tumor_id}.cobalt_plots.tar.gz -C cobalt_extra .
 ```
 ```
@@ -1408,10 +1412,12 @@ COMMAND
         [ -f "purple/~{tumor_id}.purple.somatic.vcf.gz" ]
         [ -f "purple/~{tumor_id}.purple.purity.tsv" ]
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived rather than listed as an output. Tested for NOT being a
+        # file rather than for being a directory: a plot directory can be written as a
+        # symlink, which the engine cannot deliver and which a test for a directory misses.
         mkdir -p purple_extra
-        find purple -mindepth 1 -maxdepth 1 -type d -exec mv {} purple_extra/ \;
+        find purple -mindepth 1 -maxdepth 1 ! -type f -exec mv {} purple_extra/ \;
         tar -czf ~{tumor_id}.purple_plots.tar.gz -C purple_extra .
 ```
 ```

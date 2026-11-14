@@ -1018,11 +1018,19 @@ COMMAND
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash amber.sh
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
-        mkdir -p amber_extra
-        find amber -mindepth 1 -maxdepth 1 -type d -exec mv {} amber_extra/ \;
-        tar -czf ~{tumor_id}.amber_plots.tar.gz -C amber_extra .
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived and then removed, leaving the output glob only files.
+        # Tested for NOT being a file rather than for being a directory, since a plot
+        # directory can be written as a symlink. Read where it sits rather than moved: a
+        # move is a recursive copy on a mounted object store, which runs out of file
+        # descriptors, and a failure inside find -exec does not set find's exit status, so
+        # it passed silently and left the engine a directory it could not deliver.
+        find amber -mindepth 1 -maxdepth 1 ! -type f -printf '%P\n' | sort > amber_extra.txt
+        tar -czf ~{tumor_id}.amber_plots.tar.gz -C amber -T amber_extra.txt
+        while IFS= read -r extra; do rm -rf "amber/${extra}"; done < amber_extra.txt
+        [ -z "$(find amber -mindepth 1 -maxdepth 1 ! -type f)" ] || {
+            echo "ERROR: amber/ still holds something that is not a file; the engine cannot" \
+                 "deliver it" >&2; exit 1; }
 ```
 ```
         set -euo pipefail
@@ -1109,11 +1117,19 @@ COMMAND
         apptainer exec "${bind_args[@]}" \
             "~{images_dir}/~{image}" bash cobalt.sh
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
-        mkdir -p cobalt_extra
-        find cobalt -mindepth 1 -maxdepth 1 -type d -exec mv {} cobalt_extra/ \;
-        tar -czf ~{tumor_id}.cobalt_plots.tar.gz -C cobalt_extra .
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived and then removed, leaving the output glob only files.
+        # Tested for NOT being a file rather than for being a directory, since a plot
+        # directory can be written as a symlink. Read where it sits rather than moved: a
+        # move is a recursive copy on a mounted object store, which runs out of file
+        # descriptors, and a failure inside find -exec does not set find's exit status, so
+        # it passed silently and left the engine a directory it could not deliver.
+        find cobalt -mindepth 1 -maxdepth 1 ! -type f -printf '%P\n' | sort > cobalt_extra.txt
+        tar -czf ~{tumor_id}.cobalt_plots.tar.gz -C cobalt -T cobalt_extra.txt
+        while IFS= read -r extra; do rm -rf "cobalt/${extra}"; done < cobalt_extra.txt
+        [ -z "$(find cobalt -mindepth 1 -maxdepth 1 ! -type f)" ] || {
+            echo "ERROR: cobalt/ still holds something that is not a file; the engine cannot" \
+                 "deliver it" >&2; exit 1; }
 ```
 ```
         set -euo pipefail
@@ -1408,11 +1424,19 @@ COMMAND
         [ -f "purple/~{tumor_id}.purple.somatic.vcf.gz" ]
         [ -f "purple/~{tumor_id}.purple.purity.tsv" ]
 
-        # Cromwell delocalizes files, not directories, so any subdirectory the tool wrote is
-        # archived rather than listed as an output.
-        mkdir -p purple_extra
-        find purple -mindepth 1 -maxdepth 1 -type d -exec mv {} purple_extra/ \;
-        tar -czf ~{tumor_id}.purple_plots.tar.gz -C purple_extra .
+        # Cromwell delocalizes files, not directories, so anything the tool wrote that is not
+        # a plain file is archived and then removed, leaving the output glob only files.
+        # Tested for NOT being a file rather than for being a directory, since a plot
+        # directory can be written as a symlink. Read where it sits rather than moved: a
+        # move is a recursive copy on a mounted object store, which runs out of file
+        # descriptors, and a failure inside find -exec does not set find's exit status, so
+        # it passed silently and left the engine a directory it could not deliver.
+        find purple -mindepth 1 -maxdepth 1 ! -type f -printf '%P\n' | sort > purple_extra.txt
+        tar -czf ~{tumor_id}.purple_plots.tar.gz -C purple -T purple_extra.txt
+        while IFS= read -r extra; do rm -rf "purple/${extra}"; done < purple_extra.txt
+        [ -z "$(find purple -mindepth 1 -maxdepth 1 ! -type f)" ] || {
+            echo "ERROR: purple/ still holds something that is not a file; the engine cannot" \
+                 "deliver it" >&2; exit 1; }
 ```
 ```
         set -euo pipefail

@@ -90,6 +90,15 @@ archive, with a report of what each condition costs and how many sites remain us
 site list or the full call set.
 
 ## [3.4.1] - 2026-11-10
+### Fixed
+- Only plain files are declared as the AMBER, COBALT and PURPLE output. A plot directory
+left among them fails the task that reads those outputs, because the engine delivers files
+rather than directories. Anything that is not a file is now archived where it sits and then
+removed, rather than moved aside: a move is a recursive copy on a mounted object store and
+runs out of file descriptors, and the failure went unnoticed because a command that fails
+inside `find -exec` does not set find's exit status. A directory left behind now stops the
+task instead.
+
 ### Added
 - `outputDirectory`, copying the workflow outputs there and writing a manifest of where
 each one landed. Unset, nothing is copied. It exists for a site where the engine's own

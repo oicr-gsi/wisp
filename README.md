@@ -1622,6 +1622,20 @@ COMMAND
         echo "primary tumour sample id: $(cat tumor_id.txt)," \
              "called by PURPLE $(cat purple_version.txt)," \
              "$(grep -c . primary_contigs.txt) contigs in its call set" >&2
+
+        # The archive holds the plot directories the primary stage wrote, and the engine
+        # delivers files rather than directories, so they are removed before the outputs are
+        # globbed. Nothing downstream reads them and the archive still carries them. Tested
+        # for NOT being a file rather than for being a directory, since a plot directory can
+        # be written as a symlink.
+        for stage in primary/purple primary/amber; do
+            [ -d "${stage}" ] || continue
+            find "${stage}" -mindepth 1 -maxdepth 1 ! -type f -printf '%P\n' | sort > extra.txt
+            while IFS= read -r extra; do rm -rf "${stage:?}/${extra:?}"; done < extra.txt
+            [ -z "$(find "${stage}" -mindepth 1 -maxdepth 1 ! -type f)" ] || {
+                echo "ERROR: ${stage} still holds something that is not a file; the engine" \
+                     "cannot deliver it" >&2; exit 1; }
+        done
 ```
 ```
         set -euo pipefail

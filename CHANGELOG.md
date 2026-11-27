@@ -112,3 +112,11 @@ nothing downstream reads any of the three.
 - The regression summary records the reference by name rather than by install path. The
 path differs between sites and between builds of the same module, so a baseline taken on
 one cluster could not match a run on another although nothing about the result differed.
+
+## [3.4.3] - 2026-11-27
+### Fixed
+- Only plain files are declared as the output of the task that unpacks a primary archive.
+The archive carries the plot directories the primary stage wrote, and the engine delivers
+files rather than directories, so the task that read those outputs failed to localize
+them. They are removed before the outputs are globbed; the archive still carries them and
+nothing downstream reads them.
